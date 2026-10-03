@@ -92,7 +92,7 @@ jobs:
       - name: Smoke test with redis-cli
         run: |
           docker run -d --name ember -p 6380:6380 ember:ci
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             [ "$(docker inspect --format '{{.State.Health.Status}}' ember)" = healthy ] && break
             sleep 1
           done
@@ -102,6 +102,14 @@ jobs:
           $cli set smoke ok
           test "$($cli get smoke)" = ok
           $cli info server | grep -E 'tcp_port|ember_version'
+      - name: Compare replies with real Redis 7
+        run: |
+          docker network create compat
+          docker run -d --name compat-redis --network compat redis:7-alpine redis-server --save ''
+          docker run -d --name compat-ember --network compat ember:ci
+          sleep 3
+          docker run --rm --network compat -v "$PWD/test/cli:/cli:ro" redis:7-alpine \
+            sh /cli/compat.sh compat-redis 6379 compat-ember 6380
       - name: Container logs
         if: failure()
         run: docker logs ember

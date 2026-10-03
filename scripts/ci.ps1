@@ -113,6 +113,14 @@ if (-not $SkipDocker) {
     }
 }
 
+if (-not $SkipDocker) {
+    Step 'replies identical to real Redis 7 (differential test)' {
+        $out = & "$PSScriptRoot\compat-diff.ps1"
+        $out | Select-Object -Last 3 | ForEach-Object { Write-Host $_ }
+        [bool]($out | Where-Object { $_ -match '^IDENTICAL' })
+    }
+}
+
 Write-Host ""
 Write-Host "Summary" -ForegroundColor Cyan
 $failed = 0

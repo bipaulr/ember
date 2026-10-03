@@ -1,4 +1,4 @@
-﻿# Ember
+# Ember
 
 [![CI](https://github.com/OWNER/ember/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/ember/actions/workflows/ci.yml)
 
@@ -152,8 +152,10 @@ go test -run '^$' -bench . -benchmem ./internal/...
 ```
 
 On Windows, `.\scripts\ci.ps1` runs everything the CI runs (lint, race tests in
-a Linux container, fuzz, Docker build and a `redis-cli` smoke test), so you can
-check before pushing. `.\bench\run.ps1` (or `bench/run.sh`) reproduces the
+a Linux container, fuzz, Docker build, a `redis-cli` smoke test and a differential
+test that sends 62 edge-case commands to real Redis 7.4 and to Ember and requires
+identical replies), so you can check before pushing. `.\scripts\redis-cli-smoke.ps1`
+regenerates [docs/transcript.txt](docs/transcript.txt). `.\bench\run.ps1` (or `bench/run.sh`) reproduces the
 Ember vs Redis comparison.
 
 Layout:
