@@ -144,3 +144,42 @@ func TestPortInUse(t *testing.T) {
 		t.Fatal("expected bind error")
 	}
 }
+
+func TestHealthcheck(t *testing.T) {
+	addr, cancel, done, _ := startRun(t, "--aof-path", "")
+	defer func() { cancel(); <-done }()
+	_, port, _ := net.SplitHostPort(addr)
+	var p int
+	if _, err := fmt.Sscan(port, &p); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(context.Background(), []string{"--healthcheck", "--port", port}, &safeBuf{}); err != nil {
+		t.Fatalf("healthcheck against a live server: %v", err)
+	}
+	if err := run(context.Background(), []string{"--healthcheck", "--port", "1"}, &safeBuf{}); err == nil {
+		t.Fatal("healthcheck must fail when nothing is listening")
+	}
+}
+
+func TestPprofFlag(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pp := ln.Addr().String()
+	_ = ln.Close()
+	_, cancel, done, _ := startRun(t, "--aof-path", "", "--pprof-addr", pp)
+	defer func() { cancel(); <-done }()
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		c, err := net.Dial("tcp", pp)
+		if err == nil {
+			_ = c.Close()
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("pprof endpoint never came up")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}

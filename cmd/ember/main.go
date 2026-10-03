@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
+	"net/http"
+	_ "net/http/pprof" // registers /debug/pprof handlers on http.DefaultServeMux
 	"os"
 	"os/signal"
 	"strconv"
@@ -42,9 +45,14 @@ func run(ctx context.Context, args []string, logw io.Writer) error {
 		fsync      = fs.String("appendfsync", "everysec", "AOF fsync policy: always, everysec or no")
 		rewriteMin = fs.Int64("aof-rewrite-min-size", aof.DefaultRewriteMinSize, "automatic rewrite needs the AOF to be at least this many bytes (negative disables)")
 		verbose    = fs.Bool("verbose", false, "debug logging")
+		pprofAddr  = fs.String("pprof-addr", "", "serve net/http/pprof on this address, e.g. 127.0.0.1:6060 (off by default)")
+		health     = fs.Bool("healthcheck", false, "connect to the local server, send PING, exit 0 if it answers PONG (for container health checks)")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if *health {
+		return healthcheck(ctx, *port)
 	}
 	policy, err := aof.ParsePolicy(*fsync)
 	if err != nil {
@@ -55,6 +63,10 @@ func run(ctx context.Context, args []string, logw io.Writer) error {
 		level = slog.LevelDebug
 	}
 	log := slog.New(slog.NewTextHandler(logw, &slog.HandlerOptions{Level: level}))
+
+	if *pprofAddr != "" {
+		go servePprof(*pprofAddr, log)
+	}
 
 	st := store.New(*shards)
 	env := command.NewEnv(st)
@@ -132,4 +144,38 @@ func openAOF(st *store.Store, env *command.Env, path string, policy aof.Policy, 
 	a.SetSource(st)
 	st.SetPropagator(a.Append)
 	return a, nil
+}
+
+// servePprof exposes the profiling endpoints. It is opt-in and should be bound
+// to a loopback address.
+func servePprof(addr string, log *slog.Logger) {
+	log.Info("pprof listening", "addr", addr)
+	srv := &http.Server{Addr: addr, ReadHeaderTimeout: 5 * time.Second}
+	if err := srv.ListenAndServe(); err != nil {
+		log.Error("pprof server stopped", "err", err)
+	}
+}
+
+// healthcheck dials the local server and expects +PONG. A distroless image has
+// no shell or redis-cli, so the binary checks itself: HEALTHCHECK runs
+// "/ember --healthcheck" in exec form.
+func healthcheck(ctx context.Context, port int) error {
+	d := net.Dialer{Timeout: 2 * time.Second}
+	conn, err := d.DialContext(ctx, "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+	if err != nil {
+		return err
+	}
+	defer func() { _ = conn.Close() }()
+	_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
+	if _, err := io.WriteString(conn, "PING\r\n"); err != nil {
+		return err
+	}
+	buf := make([]byte, 7)
+	if _, err := io.ReadFull(conn, buf); err != nil {
+		return err
+	}
+	if string(buf) != "+PONG\r\n" {
+		return fmt.Errorf("unexpected reply %q", buf)
+	}
+	return nil
 }
