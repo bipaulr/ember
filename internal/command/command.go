@@ -27,6 +27,10 @@ type Client struct {
 	// Closing asks the connection loop to close after flushing replies.
 	Closing bool
 
+	// Dirty is set after a write command runs. The connection then commits the
+	// AOF before it sends the next bytes to the client.
+	Dirty bool
+
 	// Per-client counters, summed by INFO. Keeping them per client avoids a
 	// contended atomic on every command.
 	Commands atomic.Int64
@@ -56,6 +60,8 @@ type Spec struct {
 	Handler Handler
 	// FirstKey, LastKey, Step follow the COMMAND reply convention.
 	FirstKey, LastKey, Step int
+
+	write bool
 }
 
 // Table maps upper-case names to specs.
@@ -76,6 +82,11 @@ func NewTable() *Table {
 }
 
 func (t *Table) add(s Spec) {
+	for _, f := range s.Flags {
+		if f == FlagWrite {
+			s.write = true
+		}
+	}
 	t.m[strings.ToUpper(s.Name)] = &s
 }
 
@@ -117,6 +128,9 @@ func (t *Table) Execute(c *Ctx) {
 		return
 	}
 	spec.Handler(c)
+	if spec.write {
+		c.Client.Dirty = true
+	}
 }
 
 func unknownCommandMsg(args [][]byte) string {

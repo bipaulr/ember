@@ -152,9 +152,31 @@ func (f *flushReader) Read(p []byte) (int, error) {
 	return f.conn.Read(p)
 }
 
+// connWriter is the io.Writer behind a client's reply buffer. Before any bytes
+// leave for the client, it commits the AOF if this client has run write
+// commands. Under appendfsync=always that means a reply is never sent for a
+// write that is not yet on disk; commits from concurrent clients share one fsync.
+type connWriter struct {
+	conn net.Conn
+	env  *command.Env
+	cl   *command.Client
+}
+
+func (cw *connWriter) Write(p []byte) (int, error) {
+	if cw.cl.Dirty {
+		cw.cl.Dirty = false
+		if cw.env.AOF != nil {
+			if err := cw.env.AOF.Commit(); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return cw.conn.Write(p)
+}
+
 func (s *Server) serveConn(conn net.Conn) {
 	cl := s.env.NewClient(conn.RemoteAddr().String())
-	w := resp.NewWriter(conn)
+	w := resp.NewWriter(&connWriter{conn: conn, env: s.env, cl: cl})
 	r := resp.NewReader(&flushReader{conn: conn, w: w})
 	c := &command.Ctx{W: w, Store: s.env.Store, Client: cl, Env: s.env}
 	defer func() {

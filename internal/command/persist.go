@@ -25,6 +25,9 @@ type Persister interface {
 	Info() PersistInfo
 	// StartRewrite begins a background rewrite and returns immediately.
 	StartRewrite() error
+	// Commit makes all records appended so far visible to the OS and, under
+	// the always policy, durable.
+	Commit() error
 }
 
 func registerPersist(t *Table) {

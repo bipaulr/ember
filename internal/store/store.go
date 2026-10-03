@@ -65,6 +65,7 @@ type Store struct {
 	clock   func() int64
 	prop    Propagator
 	expired atomic.Int64
+	loading atomic.Bool
 }
 
 // New creates a store with n shards (DefaultShards if n <= 0).
@@ -88,8 +89,22 @@ func NewWithClock(n int, clock func() int64) *Store {
 // SetPropagator installs the write-ahead hook. Call it before serving.
 func (s *Store) SetPropagator(p Propagator) { s.prop = p }
 
-// Now returns the store clock in Unix milliseconds.
-func (s *Store) Now() int64 { return s.clock() }
+// Now returns the store clock in Unix milliseconds. While the store is loading
+// (AOF replay) time is frozen at 0, so nothing expires mid-replay; see SetLoading.
+func (s *Store) Now() int64 { return s.now() }
+
+func (s *Store) now() int64 {
+	if s.loading.Load() {
+		return 0
+	}
+	return s.clock()
+}
+
+// SetLoading freezes expiry while an AOF is replayed. A command in the log was
+// valid at the time it ran, so replaying it must not see keys as expired just
+// because the server was down for a while. Expired keys are removed normally
+// once loading ends.
+func (s *Store) SetLoading(on bool) { s.loading.Store(on) }
 
 // NumShards returns the shard count.
 func (s *Store) NumShards() int { return len(s.shards) }
@@ -141,7 +156,7 @@ func (s *Store) View(key string, fn func(e *Entry)) {
 		sh.mu.RUnlock()
 		return
 	}
-	if e.ExpireAt == 0 || s.clock() < e.ExpireAt {
+	if e.ExpireAt == 0 || s.now() < e.ExpireAt {
 		fn(e)
 		sh.mu.RUnlock()
 		return
@@ -161,7 +176,7 @@ func (tx *Tx) Entry() *Entry {
 	if e == nil {
 		return nil
 	}
-	if e.ExpireAt != 0 && tx.s.clock() >= e.ExpireAt {
+	if e.ExpireAt != 0 && tx.s.now() >= e.ExpireAt {
 		tx.sh.remove(tx.key, e)
 		tx.s.expired.Add(1)
 		tx.Log([]byte("DEL"), []byte(tx.key))
@@ -274,7 +289,7 @@ func (s *Store) TTLKeys() int {
 // Keys returns every live key for which match returns true.
 func (s *Store) Keys(match func(key string) bool) []string {
 	var out []string
-	now := s.clock()
+	now := s.now()
 	for _, sh := range s.shards {
 		sh.mu.RLock()
 		for k, e := range sh.m {
@@ -323,7 +338,7 @@ func (s *Store) ExpireCycle(sampleSize int, budget time.Duration) int {
 		if sampled == 0 || expired*4 <= sampled {
 			return total
 		}
-		if time.Now().After(deadline) {
+		if !time.Now().Before(deadline) {
 			return total
 		}
 	}
@@ -343,7 +358,7 @@ func (s *Store) sampleOnce(n int) (sampled, expired int) {
 		key := sh.ttlKeys[rand.Intn(len(sh.ttlKeys))]
 		e := sh.m[key]
 		sampled++
-		if e != nil && e.ExpireAt != 0 && s.clock() >= e.ExpireAt {
+		if e != nil && e.ExpireAt != 0 && s.now() >= e.ExpireAt {
 			sh.remove(key, e)
 			s.expired.Add(1)
 			expired++
@@ -395,7 +410,7 @@ func (s *Store) SnapshotShard(i int, mark func(), emit func(args [][]byte)) {
 	if mark != nil {
 		mark()
 	}
-	now := s.clock()
+	now := s.now()
 	for k, e := range sh.m {
 		if e.ExpireAt != 0 && now >= e.ExpireAt {
 			continue
