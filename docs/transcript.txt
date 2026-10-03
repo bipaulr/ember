@@ -1,0 +1,195 @@
+﻿# redis-cli 7.4.11
+# server: ember-smoke:6380
+127.0.0.1:6380> PING
+PONG
+127.0.0.1:6380> PING hello
+"hello"
+127.0.0.1:6380> ECHO "hello world"
+"hello world"
+127.0.0.1:6380> SELECT 0
+OK
+127.0.0.1:6380> SELECT 1
+(error) ERR DB index is out of range
+127.0.0.1:6380> HELLO 2
+ 1) "server"
+ 2) "ember"
+ 3) "version"
+ 4) "0.1.0"
+ 5) "proto"
+ 6) (integer) 2
+ 7) "id"
+ 8) (integer) 7
+ 9) "mode"
+10) "standalone"
+11) "role"
+12) "master"
+127.0.0.1:6380> HELLO 3
+(error) NOPROTO sorry, this protocol version is not supported
+127.0.0.1:6380> CLIENT SETNAME cli-smoke
+OK
+127.0.0.1:6380> CLIENT GETNAME
+(nil)
+127.0.0.1:6380> CLIENT ID
+(integer) 11
+127.0.0.1:6380> SET greeting "hello world"
+OK
+127.0.0.1:6380> GET greeting
+"hello world"
+127.0.0.1:6380> SET temp value EX 100
+OK
+127.0.0.1:6380> TTL temp
+(integer) 100
+127.0.0.1:6380> PTTL temp
+(integer) 99990
+127.0.0.1:6380> SET once 1 NX
+OK
+127.0.0.1:6380> SET once 2 NX
+(nil)
+127.0.0.1:6380> SET once 3 XX
+OK
+127.0.0.1:6380> SET once 4 GET
+"3"
+127.0.0.1:6380> GETDEL once
+"4"
+127.0.0.1:6380> MSET a 1 b 2 c 3
+OK
+127.0.0.1:6380> MGET a b c nope
+1) "1"
+2) "2"
+3) "3"
+4) (nil)
+127.0.0.1:6380> INCR counter
+(integer) 1
+127.0.0.1:6380> INCRBY counter 10
+(integer) 11
+127.0.0.1:6380> DECR counter
+(integer) 10
+127.0.0.1:6380> DECRBY counter 5
+(integer) 5
+127.0.0.1:6380> APPEND greeting "!"
+(integer) 12
+127.0.0.1:6380> STRLEN greeting
+(integer) 12
+127.0.0.1:6380> EXISTS a b nope
+(integer) 2
+127.0.0.1:6380> EXPIRE a 100
+(integer) 1
+127.0.0.1:6380> PEXPIRE b 100000
+(integer) 1
+127.0.0.1:6380> EXPIREAT c 4102444800
+(integer) 1
+127.0.0.1:6380> PEXPIREAT c 4102444800000
+(integer) 1
+127.0.0.1:6380> TTL a
+(integer) 100
+127.0.0.1:6380> PERSIST a
+(integer) 1
+127.0.0.1:6380> TTL a
+(integer) -1
+127.0.0.1:6380> TYPE a
+string
+127.0.0.1:6380> TYPE nope
+none
+127.0.0.1:6380> KEYS *
+1) "counter"
+2) "a"
+3) "c"
+4) "greeting"
+5) "temp"
+6) "b"
+127.0.0.1:6380> KEYS [ab]
+1) "a"
+2) "b"
+127.0.0.1:6380> DBSIZE
+(integer) 6
+127.0.0.1:6380> LPUSH mylist one two three
+(integer) 3
+127.0.0.1:6380> RPUSH mylist four
+(integer) 4
+127.0.0.1:6380> LRANGE mylist 0 -1
+1) "three"
+2) "two"
+3) "one"
+4) "four"
+127.0.0.1:6380> LLEN mylist
+(integer) 4
+127.0.0.1:6380> LPOP mylist
+"three"
+127.0.0.1:6380> RPOP mylist
+"four"
+127.0.0.1:6380> LPOP mylist 5
+1) "two"
+2) "one"
+127.0.0.1:6380> GET mylist
+(nil)
+127.0.0.1:6380> LPUSH mylist x
+(integer) 1
+127.0.0.1:6380> GET mylist
+(error) WRONGTYPE Operation against a key holding the wrong kind of value
+127.0.0.1:6380> INCR greeting
+(error) ERR value is not an integer or out of range
+127.0.0.1:6380> GET
+(error) ERR wrong number of arguments for 'get' command
+127.0.0.1:6380> FROBNICATE x y
+(error) ERR unknown command 'FROBNICATE', with args beginning with: 'x' 'y' 
+127.0.0.1:6380> SET k v EX 0
+(error) ERR invalid expire time in 'set' command
+127.0.0.1:6380> PUBLISH news hello
+(integer) 0
+127.0.0.1:6380> PUBSUB CHANNELS
+(empty array)
+127.0.0.1:6380> PUBSUB NUMPAT
+(integer) 0
+127.0.0.1:6380> PUBSUB NUMSUB news
+1) "news"
+2) (integer) 0
+127.0.0.1:6380> COMMAND COUNT
+(integer) 47
+127.0.0.1:6380> COMMAND DOCS
+(empty array)
+127.0.0.1:6380> COMMAND INFO get
+1) 1) "get"
+   2) (integer) 2
+   3) 1) readonly
+      2) fast
+   4) (integer) 1
+   5) (integer) 1
+   6) (integer) 1
+127.0.0.1:6380> CONFIG GET save
+1) "save"
+2) ""
+127.0.0.1:6380> INFO keyspace
+# Keyspace
+db0:keys=7,expires=3,avg_ttl=0
+127.0.0.1:6380> INFO persistence
+# Persistence
+aof_enabled:1
+aof_path:/data/ember.aof
+aof_fsync_policy:everysec
+aof_current_size:907
+aof_base_size:0
+aof_rewrite_in_progress:0
+aof_rewrites:0
+127.0.0.1:6380> BGREWRITEAOF
+Background append only file rewriting started
+127.0.0.1:6380> DEL a b
+(integer) 2
+127.0.0.1:6380> FLUSHDB
+OK
+127.0.0.1:6380> DBSIZE
+(integer) 0
+127.0.0.1:6380> FLUSHALL
+OK
+127.0.0.1:6380> QUIT
+
+# Pub/sub: a pattern subscriber on one connection, a publisher on another
+127.0.0.1:6380> PUBLISH news "breaking"
+(integer) 1
+--- subscriber saw:
+psubscribe
+ne*
+1
+pmessage
+ne*
+news
+breaking
