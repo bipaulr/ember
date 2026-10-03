@@ -267,3 +267,101 @@ func TestNewReaderReusesBufio(t *testing.T) {
 		t.Fatal("expected reuse of bufio.Reader")
 	}
 }
+
+func TestParseInt(t *testing.T) {
+	good := map[string]int64{"0": 0, "7": 7, "-1": -1, "1234567890": 1234567890,
+		"9223372036854775807": 1<<63 - 1, "-9223372036854775808": -1 << 63}
+	for s, want := range good {
+		if got, ok := ParseInt([]byte(s)); !ok || got != want {
+			t.Errorf("ParseInt(%q) = %d, %v", s, got, ok)
+		}
+	}
+	for _, s := range []string{"", "-", "+1", "01", "-0", "00", "1x", " 1", "1 ", "-a",
+		"9223372036854775808", "-9223372036854775809", "99999999999999999999", "123456789012345678901"} {
+		if _, ok := ParseInt([]byte(s)); ok {
+			t.Errorf("ParseInt(%q) should fail", s)
+		}
+	}
+}
+
+// TestArenaReuseAcrossManyCommands parses thousands of commands of varied
+// shapes through one Reader, crossing arena block boundaries, and checks each
+// against what was sent.
+func TestArenaReuseAcrossManyCommands(t *testing.T) {
+	sizes := []int{0, 1, 7, 100, 1000, 4095, 4096, 4097, 9000, arenaMaxArg - 1, arenaMaxArg, arenaMaxArg + 1, 40000}
+	var wire []byte
+	var want [][][]byte
+	for i := 0; i < 3000; i++ {
+		n := 1 + i%6
+		args := make([][]byte, n)
+		for j := range args {
+			sz := sizes[(i*7+j*3)%len(sizes)]
+			args[j] = bytes.Repeat([]byte{byte('a' + (i+j)%26)}, sz)
+		}
+		want = append(want, args)
+		wire = AppendCommand(wire, args...)
+	}
+	r := NewReader(bytes.NewReader(wire))
+	for i, w := range want {
+		got, err := r.ReadCommand()
+		if err != nil {
+			t.Fatalf("command %d: %v", i, err)
+		}
+		if len(got) != len(w) {
+			t.Fatalf("command %d: %d args, want %d", i, len(got), len(w))
+		}
+		for j := range w {
+			if !bytes.Equal(got[j], w[j]) {
+				t.Fatalf("command %d arg %d corrupted", i, j)
+			}
+		}
+	}
+}
+
+// TestArgumentsAreIsolated: appending to one argument must not overwrite its
+// neighbour, even though they share an arena.
+func TestArgumentsAreIsolated(t *testing.T) {
+	wire := AppendCommand(nil, []byte("AAAA"), []byte("BBBB"), []byte("CCCC"))
+	args, err := NewReader(bytes.NewReader(wire)).ReadCommand()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = append(args[0], 'X', 'X', 'X')
+	if string(args[1]) != "BBBB" || string(args[2]) != "CCCC" {
+		t.Fatalf("neighbouring arguments were overwritten: %q %q", args[1], args[2])
+	}
+}
+
+// TestReadCommandDoesNotAllocate pins the optimisation: after warm-up, parsing
+// a command of small arguments allocates nothing.
+func TestReadCommandDoesNotAllocate(t *testing.T) {
+	wire := AppendCommand(nil, []byte("SET"), []byte("key:000000012345"), bytes.Repeat([]byte("v"), 64))
+	r := NewReader(&loopReader{data: wire})
+	if _, err := r.ReadCommand(); err != nil {
+		t.Fatal(err)
+	}
+	allocs := testing.AllocsPerRun(1000, func() {
+		if _, err := r.ReadCommand(); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if allocs != 0 {
+		t.Fatalf("ReadCommand allocated %.1f times per command, want 0", allocs)
+	}
+}
+
+func TestReadCommandErrorsMidArena(t *testing.T) {
+	// A bad terminator on a small (arena) argument is still a protocol error.
+	_, err := NewReader(strings.NewReader("*2\r\n$3\r\nabc\r\n$2\r\nxyZZ")).ReadCommand()
+	if !IsProtocolError(err) {
+		t.Fatalf("got %v", err)
+	}
+	_, err = NewReader(strings.NewReader("*1\r\n$5\r\nab")).ReadCommand()
+	if !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("got %v", err)
+	}
+	_, err = NewReader(strings.NewReader("*1\r\n$2\r\nab")).ReadCommand()
+	if !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("missing CRLF: got %v", err)
+	}
+}

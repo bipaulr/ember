@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
+	"math"
 )
 
 // Protocol limits. They match the defaults of Redis.
@@ -27,6 +27,10 @@ const (
 	// length. Bigger payloads grow as bytes actually arrive, so a client
 	// cannot make the server allocate 512 MB by sending only a header.
 	allocChunk = 64 * 1024
+
+	// Argument arena for ReadCommand.
+	arenaSize   = 4 * 1024  // size of each arena block
+	arenaMaxArg = 16 * 1024 // larger arguments get their own allocation
 )
 
 // Type identifies the kind of a RESP value.
@@ -69,6 +73,10 @@ func IsProtocolError(err error) bool {
 // Reader parses RESP2 from a stream.
 type Reader struct {
 	br *bufio.Reader
+
+	// Reused by ReadCommand so that steady-state parsing allocates nothing.
+	argBuf []byte
+	argv   [][]byte
 }
 
 // NewReader wraps r. If r is already a *bufio.Reader it is used directly.
@@ -111,11 +119,53 @@ func (r *Reader) readInt(crlfOnly bool) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	n, perr := strconv.ParseInt(string(line), 10, 64)
-	if perr != nil {
+	n, ok := ParseInt(line)
+	if !ok {
 		return 0, protoErr("invalid integer %q", truncate(line))
 	}
 	return n, nil
+}
+
+// ParseInt parses a canonical base-10 int64: an optional '-', digits with no
+// leading zeros, nothing else. It is the strictness of Redis string2ll, and
+// unlike strconv.ParseInt(string(b)) it cannot allocate.
+func ParseInt(b []byte) (int64, bool) {
+	n := len(b)
+	if n == 0 || n > 20 {
+		return 0, false
+	}
+	i, neg := 0, false
+	if b[0] == '-' {
+		neg = true
+		i = 1
+		if n == 1 {
+			return 0, false
+		}
+	}
+	if b[i] == '0' {
+		return 0, n == 1
+	}
+	var u uint64
+	for ; i < n; i++ {
+		d := b[i] - '0'
+		if d > 9 {
+			return 0, false
+		}
+		if u > (math.MaxUint64-uint64(d))/10 {
+			return 0, false
+		}
+		u = u*10 + uint64(d)
+	}
+	if neg {
+		if u > 1<<63 {
+			return 0, false
+		}
+		return int64(-u), true
+	}
+	if u > math.MaxInt64 {
+		return 0, false
+	}
+	return int64(u), true
 }
 
 func truncate(b []byte) []byte {
@@ -144,14 +194,27 @@ func (r *Reader) readBulkBody(n int) ([]byte, error) {
 			}
 		}
 	}
-	var crlf [2]byte
-	if _, err := io.ReadFull(r.br, crlf[:]); err != nil {
-		return nil, unexpected(err)
-	}
-	if crlf[0] != '\r' || crlf[1] != '\n' {
-		return nil, protoErr("bulk string not terminated by CRLF")
+	if err := r.expectCRLF(); err != nil {
+		return nil, err
 	}
 	return buf, nil
+}
+
+// expectCRLF consumes the terminator after a bulk string. It reads single
+// bytes because passing a local array through io.ReadFull would heap-allocate it.
+func (r *Reader) expectCRLF() error {
+	c1, err := r.br.ReadByte()
+	if err != nil {
+		return unexpected(err)
+	}
+	c2, err := r.br.ReadByte()
+	if err != nil {
+		return unexpected(err)
+	}
+	if c1 != '\r' || c2 != '\n' {
+		return protoErr("bulk string not terminated by CRLF")
+	}
+	return nil
 }
 
 func unexpected(err error) error {
@@ -229,6 +292,10 @@ func (r *Reader) readValue(depth int) (Value, error) {
 // ReadCommand reads one client command as a list of arguments. It accepts the
 // array-of-bulk-strings form and inline commands. Blank inline lines and empty
 // arrays yield a nil slice with a nil error; the caller should just continue.
+//
+// The returned slice and the bytes of every argument are only valid until the
+// next call to ReadCommand: they live in buffers the Reader reuses. A handler
+// that keeps an argument must copy it.
 func (r *Reader) ReadCommand() ([][]byte, error) {
 	first, err := r.br.Peek(1)
 	if err != nil {
@@ -248,7 +315,9 @@ func (r *Reader) ReadCommand() ([][]byte, error) {
 	if n > MaxArrayLen {
 		return nil, protoErr("invalid multibulk length")
 	}
-	args := make([][]byte, 0, min(int(n), 1024))
+	clear(r.argv) // drop references left by the previous command
+	args := r.argv[:0]
+	buf := r.argBuf[:0]
 	for i := int64(0); i < n; i++ {
 		b, err := r.br.ReadByte()
 		if err != nil {
@@ -264,12 +333,33 @@ func (r *Reader) ReadCommand() ([][]byte, error) {
 		if l < 0 || l > MaxBulkLen {
 			return nil, protoErr("invalid bulk length")
 		}
-		body, err := r.readBulkBody(int(l))
-		if err != nil {
-			return nil, err
+		var body []byte
+		if l <= arenaMaxArg {
+			// Small argument: carve it out of the shared arena. If the arena is
+			// full, start a new one; arguments already handed out keep pointing
+			// at the old array, which stays alive and unchanged.
+			if cap(buf)-len(buf) < int(l) {
+				buf = make([]byte, 0, max(arenaSize, int(l)))
+			}
+			start := len(buf)
+			buf = buf[:start+int(l)]
+			body = buf[start : start+int(l) : start+int(l)]
+			if _, err := io.ReadFull(r.br, body); err != nil {
+				return nil, unexpected(err)
+			}
+			if err := r.expectCRLF(); err != nil {
+				return nil, err
+			}
+		} else {
+			body, err = r.readBulkBody(int(l))
+			if err != nil {
+				return nil, err
+			}
 		}
 		args = append(args, body)
 	}
+	r.argv = args
+	r.argBuf = buf // at most max(arenaSize, arenaMaxArg) bytes, so safe to keep
 	return args, nil
 }
 

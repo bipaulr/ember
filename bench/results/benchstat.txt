@@ -1,0 +1,166 @@
+﻿goarch: amd64
+pkg: ember/internal/command
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+goos: windows
+                │ bench\results\baseline.txt │      bench\results\after.txt       │
+                │           sec/op           │    sec/op     vs base              │
+ExecuteSET-16                   219.1n ± ∞ ¹   217.5n ± ∞ ¹       ~ (p=0.690 n=5)
+ExecuteGET-16                   87.48n ± ∞ ¹   85.87n ± ∞ ¹       ~ (p=0.690 n=5)
+ExecuteINCR-16                  201.1n ± ∞ ¹   179.9n ± ∞ ¹       ~ (p=0.151 n=5)
+ExecuteLPUSH-16                 182.9n ± ∞ ¹   170.0n ± ∞ ¹       ~ (p=0.056 n=5)
+ExecutePING-16                  44.51n ± ∞ ¹   42.83n ± ∞ ¹       ~ (p=0.548 n=5)
+geomean                         125.7n         119.6n        -4.86%
+¹ need >= 6 samples for confidence interval at level 0.95
+
+                │ bench\results\baseline.txt │       bench\results\after.txt       │
+                │            B/op            │    B/op      vs base                │
+ExecuteSET-16                    176.0 ± ∞ ¹   176.0 ± ∞ ¹       ~ (p=1.000 n=5) ²
+ExecuteGET-16                    0.000 ± ∞ ¹   0.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+ExecuteINCR-16                   80.00 ± ∞ ¹   80.00 ± ∞ ¹       ~ (p=1.000 n=5) ²
+ExecuteLPUSH-16                  125.0 ± ∞ ¹   119.0 ± ∞ ¹  -4.80% (p=0.040 n=5)
+ExecutePING-16                   0.000 ± ∞ ¹   0.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+geomean                                    ³                -0.98%               ³
+¹ need >= 6 samples for confidence interval at level 0.95
+² all samples are equal
+³ summaries must be >0 to compute geomean
+
+                │ bench\results\baseline.txt │       bench\results\after.txt       │
+                │         allocs/op          │  allocs/op   vs base                │
+ExecuteSET-16                    4.000 ± ∞ ¹   4.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+ExecuteGET-16                    0.000 ± ∞ ¹   0.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+ExecuteINCR-16                   3.000 ± ∞ ¹   3.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+ExecuteLPUSH-16                  3.000 ± ∞ ¹   3.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+ExecutePING-16                   0.000 ± ∞ ¹   0.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+geomean                                    ³                +0.00%               ³
+¹ need >= 6 samples for confidence interval at level 0.95
+² all samples are equal
+³ summaries must be >0 to compute geomean
+
+pkg: ember/internal/resp
+goos: 
+                         │ bench\results\baseline.txt │       bench\results\after.txt       │
+                         │           sec/op           │    sec/op     vs base               │
+ReadCommandGET-16                        216.3n ± ∞ ¹   100.2n ± ∞ ¹  -53.68% (p=0.008 n=5)
+ReadCommandSET-16                        310.0n ± ∞ ¹   132.9n ± ∞ ¹  -57.13% (p=0.008 n=5)
+ReadCommandPipeline16-16                 295.4n ± ∞ ¹   125.9n ± ∞ ¹  -57.38% (p=0.008 n=5)
+ReadCommandInline-16                     222.0n ± ∞ ¹   214.0n ± ∞ ¹        ~ (p=0.690 n=5)
+ReadValueArray-16                        357.2n ± ∞ ¹   286.5n ± ∞ ¹  -19.79% (p=0.008 n=5)
+WriteReplies-16                          58.75n ± ∞ ¹   62.03n ± ∞ ¹   +5.58% (p=0.032 n=5)
+geomean                                  212.6n         136.2n        -35.94%
+¹ need >= 6 samples for confidence interval at level 0.95
+
+                         │ bench\results\baseline.txt │        bench\results\after.txt        │
+                         │            B/s             │      B/s       vs base                │
+ReadCommandGET-16                       158.7Mi ± ∞ ¹   342.7Mi ± ∞ ¹  +115.94% (p=0.008 n=5)
+ReadCommandSET-16                       329.2Mi ± ∞ ¹   767.8Mi ± ∞ ¹  +133.22% (p=0.008 n=5)
+ReadCommandPipeline16-16                345.4Mi ± ∞ ¹   810.2Mi ± ∞ ¹  +134.59% (p=0.008 n=5)
+ReadCommandInline-16                    120.3Mi ± ∞ ¹   124.8Mi ± ∞ ¹         ~ (p=0.690 n=5)
+geomean                                 215.8Mi         403.9Mi         +87.12%
+¹ need >= 6 samples for confidence interval at level 0.95
+
+                         │ bench\results\baseline.txt │         bench\results\after.txt         │
+                         │            B/op            │    B/op      vs base                    │
+ReadCommandGET-16                         72.00 ± ∞ ¹    0.00 ± ∞ ¹  -100.00% (p=0.008 n=5)
+ReadCommandSET-16                         170.0 ± ∞ ¹     0.0 ± ∞ ¹  -100.00% (p=0.008 n=5)
+ReadCommandPipeline16-16                  170.0 ± ∞ ¹     0.0 ± ∞ ¹  -100.00% (p=0.008 n=5)
+ReadCommandInline-16                      176.0 ± ∞ ¹   176.0 ± ∞ ¹         ~ (p=1.000 n=5) ²
+ReadValueArray-16                         314.0 ± ∞ ¹   307.0 ± ∞ ¹    -2.23% (p=0.008 n=5)
+WriteReplies-16                           0.000 ± ∞ ¹   0.000 ± ∞ ¹         ~ (p=1.000 n=5) ²
+geomean                                             ³                ?                      ³ ⁴
+¹ need >= 6 samples for confidence interval at level 0.95
+² all samples are equal
+³ summaries must be >0 to compute geomean
+⁴ ratios must be >0 to compute geomean
+
+                         │ bench\results\baseline.txt │         bench\results\after.txt         │
+                         │         allocs/op          │  allocs/op   vs base                    │
+ReadCommandGET-16                         5.000 ± ∞ ¹   0.000 ± ∞ ¹  -100.00% (p=0.008 n=5)
+ReadCommandSET-16                         7.000 ± ∞ ¹   0.000 ± ∞ ¹  -100.00% (p=0.008 n=5)
+ReadCommandPipeline16-16                  7.000 ± ∞ ¹   0.000 ± ∞ ¹  -100.00% (p=0.008 n=5)
+ReadCommandInline-16                      5.000 ± ∞ ¹   5.000 ± ∞ ¹         ~ (p=1.000 n=5) ²
+ReadValueArray-16                         7.000 ± ∞ ¹   4.000 ± ∞ ¹   -42.86% (p=0.008 n=5)
+WriteReplies-16                           0.000 ± ∞ ¹   0.000 ± ∞ ¹         ~ (p=1.000 n=5) ²
+geomean                                             ³                ?                      ³ ⁴
+¹ need >= 6 samples for confidence interval at level 0.95
+² all samples are equal
+³ summaries must be >0 to compute geomean
+⁴ ratios must be >0 to compute geomean
+
+pkg: ember/internal/server
+goos: windows
+                 │ bench\results\baseline.txt │       bench\results\after.txt       │
+                 │           sec/op           │    sec/op     vs base               │
+ServerSET_P1-16                  4.727µ ± ∞ ¹   4.680µ ± ∞ ¹        ~ (p=0.222 n=5)
+ServerSET_P16-16                 461.4n ± ∞ ¹   412.4n ± ∞ ¹  -10.62% (p=0.008 n=5)
+ServerGET_P16-16                 343.9n ± ∞ ¹   303.4n ± ∞ ¹  -11.78% (p=0.008 n=5)
+geomean                          908.6n         836.6n         -7.92%
+¹ need >= 6 samples for confidence interval at level 0.95
+
+                 │ bench\results\baseline.txt │         bench\results\after.txt         │
+                 │            B/op            │    B/op      vs base                    │
+ServerSET_P1-16                   347.0 ± ∞ ¹   176.0 ± ∞ ¹   -49.28% (p=0.008 n=5)
+ServerSET_P16-16                  347.0 ± ∞ ¹   176.0 ± ∞ ¹   -49.28% (p=0.008 n=5)
+ServerGET_P16-16                  72.00 ± ∞ ¹    0.00 ± ∞ ¹  -100.00% (p=0.008 n=5)
+geomean                           205.4                      ?                      ² ³
+¹ need >= 6 samples for confidence interval at level 0.95
+² summaries must be >0 to compute geomean
+³ ratios must be >0 to compute geomean
+
+                 │ bench\results\baseline.txt │         bench\results\after.txt         │
+                 │         allocs/op          │  allocs/op   vs base                    │
+ServerSET_P1-16                  11.000 ± ∞ ¹   4.000 ± ∞ ¹   -63.64% (p=0.008 n=5)
+ServerSET_P16-16                 11.000 ± ∞ ¹   4.000 ± ∞ ¹   -63.64% (p=0.008 n=5)
+ServerGET_P16-16                  5.000 ± ∞ ¹   0.000 ± ∞ ¹  -100.00% (p=0.008 n=5)
+geomean                           8.458                      ?                      ² ³
+¹ need >= 6 samples for confidence interval at level 0.95
+² summaries must be >0 to compute geomean
+³ ratios must be >0 to compute geomean
+
+                 │ bench\results\baseline.txt │       bench\results\after.txt       │
+                 │           cmds/s           │    cmds/s     vs base               │
+ServerSET_P1-16                  211.6k ± ∞ ¹   213.7k ± ∞ ¹        ~ (p=0.222 n=5)
+ServerSET_P16-16                 2.168M ± ∞ ¹   2.425M ± ∞ ¹  +11.88% (p=0.008 n=5)
+ServerGET_P16-16                 2.908M ± ∞ ¹   3.296M ± ∞ ¹  +13.35% (p=0.008 n=5)
+geomean                          1.101M         1.195M         +8.61%
+¹ need >= 6 samples for confidence interval at level 0.95
+
+pkg: ember/internal/store
+                         │ bench\results\baseline.txt │       bench\results\after.txt       │
+                         │           sec/op           │    sec/op     vs base               │
+StoreGet-16                              50.36n ± ∞ ¹   56.48n ± ∞ ¹  +12.15% (p=0.008 n=5)
+StoreSet-16                              189.2n ± ∞ ¹   155.2n ± ∞ ¹  -17.97% (p=0.008 n=5)
+Contention/shards=1-16                   328.1n ± ∞ ¹   375.6n ± ∞ ¹  +14.48% (p=0.008 n=5)
+Contention/shards=16-16                  67.28n ± ∞ ¹   68.50n ± ∞ ¹        ~ (p=0.278 n=5)
+Contention/shards=256-16                 21.28n ± ∞ ¹   21.94n ± ∞ ¹        ~ (p=0.222 n=5)
+SyncMapContention-16                     15.34n ± ∞ ¹   16.10n ± ∞ ¹        ~ (p=0.095 n=5)
+MutexMapContention-16                    167.0n ± ∞ ¹   186.5n ± ∞ ¹  +11.68% (p=0.008 n=5)
+geomean                                  73.39n         76.16n         +3.77%
+¹ need >= 6 samples for confidence interval at level 0.95
+
+                         │ bench\results\baseline.txt │       bench\results\after.txt       │
+                         │            B/op            │    B/op      vs base                │
+StoreGet-16                               0.000 ± ∞ ¹   0.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+StoreSet-16                               96.00 ± ∞ ¹   96.00 ± ∞ ¹       ~ (p=1.000 n=5) ²
+Contention/shards=1-16                    9.000 ± ∞ ¹   9.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+Contention/shards=16-16                   9.000 ± ∞ ¹   9.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+Contention/shards=256-16                  9.000 ± ∞ ¹   9.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+SyncMapContention-16                      11.00 ± ∞ ¹   11.00 ± ∞ ¹       ~ (p=1.000 n=5) ²
+MutexMapContention-16                     4.000 ± ∞ ¹   4.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+geomean                                             ³                +0.00%               ³
+¹ need >= 6 samples for confidence interval at level 0.95
+² all samples are equal
+³ summaries must be >0 to compute geomean
+
+                         │ bench\results\baseline.txt │       bench\results\after.txt       │
+                         │         allocs/op          │  allocs/op   vs base                │
+StoreGet-16                               0.000 ± ∞ ¹   0.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+StoreSet-16                               2.000 ± ∞ ¹   2.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+Contention/shards=1-16                    0.000 ± ∞ ¹   0.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+Contention/shards=16-16                   0.000 ± ∞ ¹   0.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+Contention/shards=256-16                  0.000 ± ∞ ¹   0.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+SyncMapContention-16                      0.000 ± ∞ ¹   0.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+MutexMapContention-16                     0.000 ± ∞ ¹   0.000 ± ∞ ¹       ~ (p=1.000 n=5) ²
+geomean                                             ³                +0.00%               ³
+¹ need >= 6 samples for confidence interval at level 0.95
+² all samples are equal
+³ summaries must be >0 to compute geomean
