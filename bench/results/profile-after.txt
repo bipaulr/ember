@@ -1,0 +1,47 @@
+﻿BenchmarkServerSET_P16-16    	28564096	       219.9 ns/op	   4547227 cmds/s	     176 B/op	       4 allocs/op
+
+== CPU: top by cumulative time ==
+Time: 2026-10-03 19:41:33 UTC
+Duration: 6.73s, Total samples = 73.78s (1096.57%)
+Showing nodes accounting for 32.72s, 44.35% of 73.78s total
+Dropped 342 nodes (cum <= 0.37s)
+Showing top 18 nodes out of 148
+      flat  flat%   sum%        cum   cum%
+     0.47s  0.64%  0.64%     49.72s 67.39%  ember/internal/server.(*Server).serveConn
+     0.01s 0.014%  0.65%     28.95s 39.24%  internal/poll.ignoringEINTRIO (inline)
+     0.14s  0.19%  0.84%     28.28s 38.33%  syscall.Syscall
+    27.07s 36.69% 37.53%     27.07s 36.69%  internal/runtime/syscall.Syscall6
+     1.37s  1.86% 39.39%     25.89s 35.09%  ember/internal/resp.(*Reader).ReadCommand
+     0.27s  0.37% 39.75%     25.81s 34.98%  syscall.RawSyscall6
+     0.46s  0.62% 40.38%     23.28s 31.55%  ember/internal/command.(*Table).Execute
+     0.25s  0.34% 40.72%     21.64s 29.33%  ember/internal/command.cmdSet
+     0.12s  0.16% 40.88%     20.42s 27.68%  net.(*conn).Write
+     0.04s 0.054% 40.93%     20.30s 27.51%  net.(*netFD).Write
+     0.09s  0.12% 41.05%     20.17s 27.34%  internal/poll.(*FD).Write
+     0.12s  0.16% 41.22%     19.69s 26.69%  syscall.Write (inline)
+     0.04s 0.054% 41.27%     19.57s 26.52%  syscall.write
+     0.19s  0.26% 41.53%     17.40s 23.58%  bufio.(*Reader).Peek
+     0.16s  0.22% 41.75%     17.21s 23.33%  bufio.(*Reader).fill
+     0.09s  0.12% 41.87%     17.04s 23.10%  ember/internal/server.(*flushReader).Read
+     1.64s  2.22% 44.09%     16.23s 22.00%  ember/internal/store.(*Store).Update
+     0.19s  0.26% 44.35%     15.13s 20.51%  ember/internal/server.runPipelined.func4
+
+== CPU: allocation share ==
+     1.37s  1.86% 39.39%     25.89s 35.09%  ember/internal/resp.(*Reader).ReadCommand
+     0.46s  0.62% 40.38%     23.28s 31.55%  ember/internal/command.(*Table).Execute
+     1.64s  2.22% 44.09%     16.23s 22.00%  ember/internal/store.(*Store).Update
+
+== allocations by function (objects), exact ==
+BenchmarkServerSET_P16-16    	 1000000	      2566 ns/op	    390087 cmds/s	     176 B/op	       4 allocs/op
+Showing nodes accounting for 4100808, 99.53% of 4120370 total
+Dropped 273 nodes (cum <= 20601)
+Showing top 8 nodes out of 13
+      flat  flat%   sum%        cum   cum%
+   1016025 24.66% 24.66%    3049636 74.01%  ember/internal/store.(*Store).Update
+   1016020 24.66% 49.32%    4065656 98.67%  ember/internal/command.cmdSet
+   1016013 24.66% 73.98%    2032936 49.34%  ember/internal/command.cmdSet.func1
+   1016011 24.66% 98.63%    1016011 24.66%  bytes.Clone (inline)
+     31722  0.77% 99.40%      31722  0.77%  ember/internal/resp.AppendCommand
+      2611 0.063% 99.47%      40804  0.99%  ember/internal/server.batch
+      1206 0.029% 99.50%      48836  1.19%  ember/internal/server.runPipelined
+      1200 0.029% 99.53%    4069490 98.77%  ember/internal/server.(*Server).serveConn

@@ -1,0 +1,25 @@
+Experiment: why was the first benchmark run's Ember p99 about 66 ms?
+Hypothesis: Go 1.24 sizes GOMAXPROCS from the host's CPU count, not the
+container's CPU quota, so a 2-CPU container ran 16 threads and was throttled by
+the kernel's CFS quota. Go 1.25 reads the quota.
+
+Setup: Ember alone in a container with --cpus 2 --memory 1g, appendfsync
+everysec, redis-benchmark -c 50 -n 100000 -r 100000 --threads 4 from a container
+on the same Docker network. Median of 3 runs.
+
+variant               P test       rps   p50    p99    max
+go1.24 default        1 set   23485.21 0.407 67.455 75.135
+go1.24 default        1 get   28498.15 0.399 60.767 71.551
+go1.24 default       16 set   199203.2 1.167 66.367 71.615
+go1.24 default       16 get     400000 0.415  2.015 40.831
+go1.24 GOMAXPROCS=2   1 set     100000 0.343  1.159 12.415
+go1.24 GOMAXPROCS=2   1 get   133155.8 0.247  0.799  4.607
+go1.24 GOMAXPROCS=2  16 set  398406.41 0.775  4.159  7.015
+go1.24 GOMAXPROCS=2  16 get  398406.41 0.311  1.055  1.687
+go1.25 default        1 set   99900.09 0.343  1.111  6.519
+go1.25 default        1 get   133155.8 0.255  0.831  2.383
+go1.25 default       16 set  398406.41 0.783  4.135  7.831
+go1.25 default       16 get  398406.41 0.303  0.967  1.711
+
+Conclusion: confirmed. Setting GOMAXPROCS=2 on Go 1.24, or using Go 1.25, removes
+the stalls (p99 67 ms -> about 1 ms, SET at depth 1 from 23k to 100k rps).

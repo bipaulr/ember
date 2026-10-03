@@ -1,0 +1,108 @@
+goos: linux
+goarch: amd64
+pkg: ember/internal/command
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+              ? bench\results\linux-before.txt ?   bench\results\linux-after.txt    ?
+              ?             sec/op             ?    sec/op     vs base              ?
+ExecuteSET-16                     279.0n ? ? ?   282.8n ? ? ?  +1.36% (p=0.008 n=5)
+ExecuteGET-16                     82.55n ? ? ?   83.12n ? ? ?  +0.69% (p=0.032 n=5)
+geomean                           151.8n         153.3n        +1.03%
+? need >= 6 samples for confidence interval at level 0.95
+
+              ? bench\results\linux-before.txt ?    bench\results\linux-after.txt    ?
+              ?              B/op              ?    B/op      vs base                ?
+ExecuteSET-16                      176.0 ? ? ?   176.0 ? ? ?       ~ (p=1.000 n=5) ?
+ExecuteGET-16                      0.000 ? ? ?   0.000 ? ? ?       ~ (p=1.000 n=5) ?
+geomean                                      ?                +0.00%               ?
+? need >= 6 samples for confidence interval at level 0.95
+? all samples are equal
+? summaries must be >0 to compute geomean
+
+              ? bench\results\linux-before.txt ?    bench\results\linux-after.txt    ?
+              ?           allocs/op            ?  allocs/op   vs base                ?
+ExecuteSET-16                      4.000 ? ? ?   4.000 ? ? ?       ~ (p=1.000 n=5) ?
+ExecuteGET-16                      0.000 ? ? ?   0.000 ? ? ?       ~ (p=1.000 n=5) ?
+geomean                                      ?                +0.00%               ?
+? need >= 6 samples for confidence interval at level 0.95
+? all samples are equal
+? summaries must be >0 to compute geomean
+
+pkg: ember/internal/resp
+                         ? bench\results\linux-before.txt ?    bench\results\linux-after.txt    ?
+                         ?             sec/op             ?    sec/op     vs base               ?
+ReadCommandGET-16                            215.4n ? ? ?   100.6n ? ? ?  -53.30% (p=0.008 n=5)
+ReadCommandSET-16                            302.6n ? ? ?   131.5n ? ? ?  -56.54% (p=0.008 n=5)
+ReadCommandPipeline16-16                     296.0n ? ? ?   121.7n ? ? ?  -58.89% (p=0.008 n=5)
+ReadCommandInline-16                         244.8n ? ? ?   248.8n ? ? ?        ~ (p=0.151 n=5)
+geomean                                      262.2n         141.5n        -46.04%
+? need >= 6 samples for confidence interval at level 0.95
+
+                         ? bench\results\linux-before.txt ?     bench\results\linux-after.txt     ?
+                         ?              B/s               ?      B/s       vs base                ?
+ReadCommandGET-16                           159.4Mi ? ? ?   341.3Mi ? ? ?  +114.09% (p=0.008 n=5)
+ReadCommandSET-16                           337.2Mi ? ? ?   776.2Mi ? ? ?  +130.15% (p=0.008 n=5)
+ReadCommandPipeline16-16                    344.8Mi ? ? ?   838.2Mi ? ? ?  +143.13% (p=0.008 n=5)
+ReadCommandInline-16                        109.1Mi ? ? ?   107.3Mi ? ? ?         ~ (p=0.151 n=5)
+geomean                                     212.1Mi         392.9Mi         +85.29%
+? need >= 6 samples for confidence interval at level 0.95
+
+                         ? bench\results\linux-before.txt ?      bench\results\linux-after.txt      ?
+                         ?              B/op              ?    B/op      vs base                    ?
+ReadCommandGET-16                             72.00 ? ? ?    0.00 ? ? ?  -100.00% (p=0.008 n=5)
+ReadCommandSET-16                             170.0 ? ? ?     0.0 ? ? ?  -100.00% (p=0.008 n=5)
+ReadCommandPipeline16-16                      170.0 ? ? ?     0.0 ? ? ?  -100.00% (p=0.008 n=5)
+ReadCommandInline-16                          200.0 ? ? ?   200.0 ? ? ?         ~ (p=1.000 n=5) ?
+geomean                                       142.8                      ?                      ? ?
+? need >= 6 samples for confidence interval at level 0.95
+? all samples are equal
+? summaries must be >0 to compute geomean
+? ratios must be >0 to compute geomean
+
+                         ? bench\results\linux-before.txt ?      bench\results\linux-after.txt      ?
+                         ?           allocs/op            ?  allocs/op   vs base                    ?
+ReadCommandGET-16                             5.000 ? ? ?   0.000 ? ? ?  -100.00% (p=0.008 n=5)
+ReadCommandSET-16                             7.000 ? ? ?   0.000 ? ? ?  -100.00% (p=0.008 n=5)
+ReadCommandPipeline16-16                      7.000 ? ? ?   0.000 ? ? ?  -100.00% (p=0.008 n=5)
+ReadCommandInline-16                          6.000 ? ? ?   6.000 ? ? ?         ~ (p=1.000 n=5) ?
+geomean                                       6.192                      ?                      ? ?
+? need >= 6 samples for confidence interval at level 0.95
+? all samples are equal
+? summaries must be >0 to compute geomean
+? ratios must be >0 to compute geomean
+
+pkg: ember/internal/server
+                 ? bench\results\linux-before.txt ?    bench\results\linux-after.txt    ?
+                 ?             sec/op             ?    sec/op     vs base               ?
+ServerSET_P1-16                      1.849? ? ? ?   1.717? ? ? ?   -7.14% (p=0.008 n=5)
+ServerSET_P16-16                     345.5n ? ? ?   263.1n ? ? ?  -23.85% (p=0.008 n=5)
+ServerGET_P16-16                     177.0n ? ? ?   119.8n ? ? ?  -32.32% (p=0.008 n=5)
+geomean                              483.6n         378.3n        -21.78%
+? need >= 6 samples for confidence interval at level 0.95
+
+                 ? bench\results\linux-before.txt ?      bench\results\linux-after.txt      ?
+                 ?              B/op              ?    B/op      vs base                    ?
+ServerSET_P1-16                       346.0 ? ? ?   176.0 ? ? ?   -49.13% (p=0.008 n=5)
+ServerSET_P16-16                      346.0 ? ? ?   176.0 ? ? ?   -49.13% (p=0.008 n=5)
+ServerGET_P16-16                      72.00 ? ? ?    0.00 ? ? ?  -100.00% (p=0.008 n=5)
+geomean                               205.0                      ?                      ? ?
+? need >= 6 samples for confidence interval at level 0.95
+? summaries must be >0 to compute geomean
+? ratios must be >0 to compute geomean
+
+                 ? bench\results\linux-before.txt ?      bench\results\linux-after.txt      ?
+                 ?           allocs/op            ?  allocs/op   vs base                    ?
+ServerSET_P1-16                      11.000 ? ? ?   4.000 ? ? ?   -63.64% (p=0.008 n=5)
+ServerSET_P16-16                     11.000 ? ? ?   4.000 ? ? ?   -63.64% (p=0.008 n=5)
+ServerGET_P16-16                      5.000 ? ? ?   0.000 ? ? ?  -100.00% (p=0.008 n=5)
+geomean                               8.458                      ?                      ? ?
+? need >= 6 samples for confidence interval at level 0.95
+? summaries must be >0 to compute geomean
+? ratios must be >0 to compute geomean
+
+                 ? bench\results\linux-before.txt ?    bench\results\linux-after.txt    ?
+                 ?             cmds/s             ?    cmds/s     vs base               ?
+ServerSET_P1-16                      540.9k ? ? ?   582.4k ? ? ?   +7.66% (p=0.008 n=5)
+ServerSET_P16-16                     2.895M ? ? ?   3.802M ? ? ?  +31.33% (p=0.008 n=5)
+ServerGET_P16-16                     5.648M ? ? ?   8.345M ? ? ?  +47.75% (p=0.008 n=5)
+geomean                              2.068M         2.644M        +27.84%
+? need >= 6 samples for confidence interval at level 0.95

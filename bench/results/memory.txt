@@ -1,0 +1,3 @@
+keys loaded: redis=632405 ember=632261 (value size 64 bytes, random key space 1000000)
+idle:   mem-redis 3.594MiB / 1GiB | mem-ember 1.555MiB / 1GiB
+loaded: mem-redis 100.6MiB / 1GiB | mem-ember 216.1MiB / 1GiB

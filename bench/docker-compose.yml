@@ -1,0 +1,53 @@
+# Ember vs Redis 7, on one user-defined network, with identical resource limits
+# and the same persistence setting (AOF, fsync once per second).
+#
+#   ./run.sh            (Linux, macOS, Git Bash)
+#   .\run.ps1           (Windows PowerShell)
+name: ember-bench
+
+# CPUS defaults to 2; run with CPUS=1 for a one-core-each comparison.
+x-limits: &limits
+  cpus: ${CPUS:-2}
+  mem_limit: 1g
+
+services:
+  redis:
+    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    # io-threads 1 and io-threads-do-reads no are the Redis defaults (one thread
+    # runs commands). run.ps1 -RedisIoThreads 2 turns on threaded I/O to check the
+    # comparison is not just about Redis being confined to one core.
+    command: ["redis-server", "--port", "6379", "--appendonly", "yes", "--appendfsync", "everysec", "--save", "",
+              "--io-threads", "${REDIS_IO_THREADS:-1}", "--io-threads-do-reads", "${REDIS_IO_READS:-no}"]
+    <<: *limits
+    volumes: ["redis-data:/data"]
+    networks: [bench]
+
+  ember:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["--host", "0.0.0.0", "--port", "6380", "--aof-path", "/data/ember.aof", "--appendfsync", "everysec"]
+    <<: *limits
+    # Go 1.25 sizes GOMAXPROCS from the CPU quota but never below 2. With a quota
+    # of 1 CPU that still means 2 busy threads, which the kernel throttles
+    # (p99 of ~40 ms). Pinning it to the quota avoids that.
+    environment:
+      GOMAXPROCS: "${CPUS:-2}"
+    volumes: ["ember-data:/data"]
+    networks: [bench]
+
+  # Client container: redis-benchmark and redis-cli from the same Redis 7 image,
+  # attached to the same network, with the scripts mounted read-only.
+  bench:
+    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    profiles: ["tools"]
+    volumes: ["./:/bench:ro"]
+    networks: [bench]
+
+networks:
+  bench:
+    driver: bridge
+
+volumes:
+  redis-data:
+  ember-data:

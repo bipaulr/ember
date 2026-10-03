@@ -1,0 +1,6 @@
+date: 2026-10-03T17:54:47Z
+host: Microsoft Windows 11 Home Single Language (12th Gen Intel(R) Core(TM) i7-12650H, 16 logical CPUs, 15.7 GB RAM)
+docker: 29.7.2
+docker vm: cpus: 16  memory: 8151822336  os: Docker Desktop
+Redis server v=7.4.11 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=40ff01a501d8e4b6
+limits: cpus=2 mem=1g per server; Repeat=5 Requests=100000 Clients=50 Threads=4

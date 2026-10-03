@@ -1,0 +1,71 @@
+PING
+PING hello
+ECHO "hello world"
+SELECT 0
+SELECT 1
+HELLO 2
+HELLO 3
+CLIENT SETNAME cli-smoke
+CLIENT GETNAME
+CLIENT ID
+SET greeting "hello world"
+GET greeting
+SET temp value EX 100
+TTL temp
+PTTL temp
+SET once 1 NX
+SET once 2 NX
+SET once 3 XX
+SET once 4 GET
+GETDEL once
+MSET a 1 b 2 c 3
+MGET a b c nope
+INCR counter
+INCRBY counter 10
+DECR counter
+DECRBY counter 5
+APPEND greeting "!"
+STRLEN greeting
+EXISTS a b nope
+EXPIRE a 100
+PEXPIRE b 100000
+EXPIREAT c 4102444800
+PEXPIREAT c 4102444800000
+TTL a
+PERSIST a
+TTL a
+TYPE a
+TYPE nope
+KEYS *
+KEYS [ab]
+DBSIZE
+LPUSH mylist one two three
+RPUSH mylist four
+LRANGE mylist 0 -1
+LLEN mylist
+LPOP mylist
+RPOP mylist
+LPOP mylist 5
+GET mylist
+LPUSH mylist x
+GET mylist
+INCR greeting
+GET
+FROBNICATE x y
+SET k v EX 0
+PUBLISH news hello
+PUBSUB CHANNELS
+PUBSUB NUMPAT
+PUBSUB NUMSUB news
+COMMAND COUNT
+COMMAND DOCS
+COMMAND INFO get
+CONFIG GET save
+INFO keyspace
+INFO persistence
+BGREWRITEAOF
+DEL a b
+FLUSHDB
+DBSIZE
+FLUSHALL
+QUIT

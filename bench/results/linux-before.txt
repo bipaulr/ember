@@ -1,0 +1,63 @@
+goos: linux
+goarch: amd64
+pkg: ember/internal/resp
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkReadCommandGET-16           	 5594598	       213.9 ns/op	 168.29 MB/s	      72 B/op	       5 allocs/op
+BenchmarkReadCommandGET-16           	 5506741	       214.7 ns/op	 167.70 MB/s	      72 B/op	       5 allocs/op
+BenchmarkReadCommandGET-16           	 5617946	       216.6 ns/op	 166.17 MB/s	      72 B/op	       5 allocs/op
+BenchmarkReadCommandGET-16           	 5548155	       215.4 ns/op	 167.16 MB/s	      72 B/op	       5 allocs/op
+BenchmarkReadCommandGET-16           	 5543187	       220.8 ns/op	 163.03 MB/s	      72 B/op	       5 allocs/op
+BenchmarkReadCommandSET-16           	 3945624	       302.6 ns/op	 353.63 MB/s	     170 B/op	       7 allocs/op
+BenchmarkReadCommandSET-16           	 3941179	       301.2 ns/op	 355.20 MB/s	     170 B/op	       7 allocs/op
+BenchmarkReadCommandSET-16           	 3966034	       303.2 ns/op	 352.88 MB/s	     170 B/op	       7 allocs/op
+BenchmarkReadCommandSET-16           	 3971962	       302.4 ns/op	 353.78 MB/s	     170 B/op	       7 allocs/op
+BenchmarkReadCommandSET-16           	 3893964	       305.7 ns/op	 349.97 MB/s	     170 B/op	       7 allocs/op
+BenchmarkReadCommandPipeline16-16    	 4025956	       294.7 ns/op	 363.05 MB/s	     170 B/op	       7 allocs/op
+BenchmarkReadCommandPipeline16-16    	 4062242	       294.0 ns/op	 363.95 MB/s	     170 B/op	       7 allocs/op
+BenchmarkReadCommandPipeline16-16    	 4066227	       296.0 ns/op	 361.51 MB/s	     170 B/op	       7 allocs/op
+BenchmarkReadCommandPipeline16-16    	 4086564	       301.9 ns/op	 354.45 MB/s	     170 B/op	       7 allocs/op
+BenchmarkReadCommandPipeline16-16    	 3977826	       304.8 ns/op	 351.06 MB/s	     170 B/op	       7 allocs/op
+BenchmarkReadCommandInline-16        	 4927741	       250.1 ns/op	 111.95 MB/s	     200 B/op	       6 allocs/op
+BenchmarkReadCommandInline-16        	 4684147	       241.9 ns/op	 115.75 MB/s	     200 B/op	       6 allocs/op
+BenchmarkReadCommandInline-16        	 4960573	       244.8 ns/op	 114.39 MB/s	     200 B/op	       6 allocs/op
+BenchmarkReadCommandInline-16        	 4947469	       241.5 ns/op	 115.95 MB/s	     200 B/op	       6 allocs/op
+BenchmarkReadCommandInline-16        	 4860062	       245.1 ns/op	 114.23 MB/s	     200 B/op	       6 allocs/op
+PASS
+ok  	ember/internal/resp	29.435s
+goos: linux
+goarch: amd64
+pkg: ember/internal/server
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkServerSET_P1-16     	  634200	      1848 ns/op	    541117 cmds/s	     346 B/op	      11 allocs/op
+BenchmarkServerSET_P1-16     	  572802	      1898 ns/op	    526997 cmds/s	     346 B/op	      11 allocs/op
+BenchmarkServerSET_P1-16     	  655251	      1849 ns/op	    540931 cmds/s	     346 B/op	      11 allocs/op
+BenchmarkServerSET_P1-16     	  647466	      1853 ns/op	    539574 cmds/s	     346 B/op	      11 allocs/op
+BenchmarkServerSET_P1-16     	  632626	      1838 ns/op	    544230 cmds/s	     346 B/op	      11 allocs/op
+BenchmarkServerSET_P16-16    	 3552860	       345.5 ns/op	   2894710 cmds/s	     346 B/op	      11 allocs/op
+BenchmarkServerSET_P16-16    	 3473870	       350.7 ns/op	   2852233 cmds/s	     346 B/op	      11 allocs/op
+BenchmarkServerSET_P16-16    	 3374036	       338.0 ns/op	   2958692 cmds/s	     346 B/op	      11 allocs/op
+BenchmarkServerSET_P16-16    	 3308755	       346.1 ns/op	   2889020 cmds/s	     346 B/op	      11 allocs/op
+BenchmarkServerSET_P16-16    	 3465097	       343.5 ns/op	   2911251 cmds/s	     346 B/op	      11 allocs/op
+BenchmarkServerGET_P16-16    	 6298648	       173.8 ns/op	   5754212 cmds/s	      72 B/op	       5 allocs/op
+BenchmarkServerGET_P16-16    	 6350828	       178.4 ns/op	   5606501 cmds/s	      72 B/op	       5 allocs/op
+BenchmarkServerGET_P16-16    	 6283964	       177.0 ns/op	   5648286 cmds/s	      72 B/op	       5 allocs/op
+BenchmarkServerGET_P16-16    	 6850075	       213.1 ns/op	   4693407 cmds/s	      72 B/op	       5 allocs/op
+BenchmarkServerGET_P16-16    	 6718364	       176.2 ns/op	   5674001 cmds/s	      72 B/op	       5 allocs/op
+PASS
+ok  	ember/internal/server	25.936s
+goos: linux
+goarch: amd64
+pkg: ember/internal/command
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkExecuteSET-16    	 4313865	       278.8 ns/op	     176 B/op	       4 allocs/op
+BenchmarkExecuteSET-16    	 4288466	       279.0 ns/op	     176 B/op	       4 allocs/op
+BenchmarkExecuteSET-16    	 4293196	       280.0 ns/op	     176 B/op	       4 allocs/op
+BenchmarkExecuteSET-16    	 4270894	       278.8 ns/op	     176 B/op	       4 allocs/op
+BenchmarkExecuteSET-16    	 4298002	       280.7 ns/op	     176 B/op	       4 allocs/op
+BenchmarkExecuteGET-16    	14532165	        82.56 ns/op	       0 B/op	       0 allocs/op
+BenchmarkExecuteGET-16    	14653908	        82.55 ns/op	       0 B/op	       0 allocs/op
+BenchmarkExecuteGET-16    	14337830	        82.47 ns/op	       0 B/op	       0 allocs/op
+BenchmarkExecuteGET-16    	13091430	        82.16 ns/op	       0 B/op	       0 allocs/op
+BenchmarkExecuteGET-16    	14328631	        83.04 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	ember/internal/command	13.740s
