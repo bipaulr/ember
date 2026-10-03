@@ -18,6 +18,8 @@ type PersistInfo struct {
 }
 
 // ErrRewriteInProgress is returned by StartRewrite when one is already running.
+//
+//nolint:staticcheck // the capitalised text is the reply Redis sends
 var ErrRewriteInProgress = errors.New("Background append only file rewriting already in progress")
 
 // Persister is the part of the AOF that commands need.

@@ -66,7 +66,7 @@ func roundTrip(t *testing.T, addr, cmd string) string {
 	}
 	defer func() { _ = c.Close() }()
 	_ = c.SetDeadline(time.Now().Add(5 * time.Second))
-	fmt.Fprint(c, cmd)
+	_, _ = fmt.Fprint(c, cmd)
 	line, err := bufio.NewReader(c).ReadString('\n')
 	if err != nil {
 		t.Fatal(err)

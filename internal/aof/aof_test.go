@@ -308,7 +308,6 @@ func TestRewriteCompacts(t *testing.T) {
 		r.do("LPOP", "list")
 	}
 	before := r.a.Info().Size
-	want := dump(r.st)
 	if err := r.a.Rewrite(); err != nil {
 		t.Fatal(err)
 	}
@@ -322,7 +321,7 @@ func TestRewriteCompacts(t *testing.T) {
 	}
 	// Writes after the rewrite go to the new file.
 	r.do("INCR", "counter")
-	want = dump(r.st)
+	want := dump(r.st)
 	r.close()
 	st, _ := loadFresh(t, path)
 	if got := dump(st); got != want {
@@ -404,7 +403,7 @@ func TestRewriteUnderConcurrentWrites(t *testing.T) {
 	for k := 0; k < 3; k++ {
 		st.View(fmt.Sprintf("counter:%d", k), func(e *store.Entry) {
 			var n int
-			fmt.Sscan(string(e.Str), &n)
+			_, _ = fmt.Sscan(string(e.Str), &n)
 			total += n
 		})
 	}

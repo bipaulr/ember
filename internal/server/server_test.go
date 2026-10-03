@@ -46,6 +46,13 @@ func dial(t *testing.T, addr string) net.Conn {
 	return c
 }
 
+func mustWrite(t *testing.T, w io.Writer, s string) {
+	t.Helper()
+	if _, err := io.WriteString(w, s); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func readN(t *testing.T, r *bufio.Reader, n int) string {
 	t.Helper()
 	buf := make([]byte, n)
@@ -59,11 +66,11 @@ func TestPingInlineAndArray(t *testing.T) {
 	_, addr := start(t, 0)
 	c := dial(t, addr)
 	r := bufio.NewReader(c)
-	fmt.Fprint(c, "PING\r\n")
+	mustWrite(t, c, "PING\r\n")
 	if got := readN(t, r, 7); got != "+PONG\r\n" {
 		t.Fatalf("inline: %q", got)
 	}
-	fmt.Fprint(c, "*1\r\n$4\r\nPING\r\n")
+	mustWrite(t, c, "*1\r\n$4\r\nPING\r\n")
 	if got := readN(t, r, 7); got != "+PONG\r\n" {
 		t.Fatalf("array: %q", got)
 	}
@@ -100,11 +107,11 @@ func TestPartialCommandAfterReplies(t *testing.T) {
 	_, addr := start(t, 0)
 	c := dial(t, addr)
 	r := bufio.NewReader(c)
-	fmt.Fprint(c, "PING\r\n*2\r\n$4\r\nEC")
+	mustWrite(t, c, "PING\r\n*2\r\n$4\r\nEC")
 	if got := readN(t, r, 7); got != "+PONG\r\n" {
 		t.Fatalf("got %q", got)
 	}
-	fmt.Fprint(c, "HO\r\n$2\r\nhi\r\n")
+	mustWrite(t, c, "HO\r\n$2\r\nhi\r\n")
 	if got := readN(t, r, 8); got != "$2\r\nhi\r\n" {
 		t.Fatalf("got %q", got)
 	}
@@ -116,7 +123,7 @@ func TestProtocolErrorClosesOnlyThatConnection(t *testing.T) {
 	good := dial(t, addr)
 	gr := bufio.NewReader(good)
 
-	fmt.Fprint(bad, "*1\r\n:5\r\n")
+	mustWrite(t, bad, "*1\r\n:5\r\n")
 	br := bufio.NewReader(bad)
 	line, err := br.ReadString('\n')
 	if err != nil || !strings.HasPrefix(line, "-ERR Protocol error") {
@@ -125,7 +132,7 @@ func TestProtocolErrorClosesOnlyThatConnection(t *testing.T) {
 	if _, err := br.ReadString('\n'); err == nil {
 		t.Fatal("bad connection should be closed")
 	}
-	fmt.Fprint(good, "PING\r\n")
+	mustWrite(t, good, "PING\r\n")
 	if got := readN(t, gr, 7); got != "+PONG\r\n" {
 		t.Fatalf("healthy connection broke: %q", got)
 	}
@@ -135,7 +142,7 @@ func TestQuit(t *testing.T) {
 	_, addr := start(t, 0)
 	c := dial(t, addr)
 	r := bufio.NewReader(c)
-	fmt.Fprint(c, "QUIT\r\n")
+	mustWrite(t, c, "QUIT\r\n")
 	if got := readN(t, r, 5); got != "+OK\r\n" {
 		t.Fatal(got)
 	}
@@ -148,7 +155,7 @@ func TestMaxClients(t *testing.T) {
 	srv, addr := start(t, 1)
 	first := dial(t, addr)
 	fr := bufio.NewReader(first)
-	fmt.Fprint(first, "PING\r\n")
+	mustWrite(t, first, "PING\r\n")
 	readN(t, fr, 7) // ensure the first connection is registered
 
 	second := dial(t, addr)
@@ -164,7 +171,7 @@ func TestMaxClients(t *testing.T) {
 func TestClientCleanup(t *testing.T) {
 	srv, addr := start(t, 0)
 	c := dial(t, addr)
-	fmt.Fprint(c, "PING\r\n")
+	mustWrite(t, c, "PING\r\n")
 	readN(t, bufio.NewReader(c), 7)
 	_ = c.Close()
 	deadline := time.Now().Add(3 * time.Second)
@@ -187,10 +194,10 @@ func TestGracefulShutdown(t *testing.T) {
 
 	c := dial(t, ln.Addr().String())
 	r := bufio.NewReader(c)
-	fmt.Fprint(c, "SET k v\r\n")
+	mustWrite(t, c, "SET k v\r\n")
 	readN(t, r, 5)
 	idle := dial(t, ln.Addr().String())
-	fmt.Fprint(idle, "PING\r\n")
+	mustWrite(t, idle, "PING\r\n")
 	readN(t, bufio.NewReader(idle), 7)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -215,9 +222,9 @@ func TestLargeReplyOverBufferSize(t *testing.T) {
 	c := dial(t, addr)
 	r := bufio.NewReader(c)
 	big := strings.Repeat("x", 200_000)
-	fmt.Fprintf(c, "*3\r\n$3\r\nSET\r\n$1\r\nk\r\n$%d\r\n%s\r\n", len(big), big)
+	mustWrite(t, c, fmt.Sprintf("*3\r\n$3\r\nSET\r\n$1\r\nk\r\n$%d\r\n%s\r\n", len(big), big))
 	readN(t, r, 5)
-	fmt.Fprint(c, "GET k\r\n")
+	mustWrite(t, c, "GET k\r\n")
 	want := fmt.Sprintf("$%d\r\n%s\r\n", len(big), big)
 	if got := readN(t, r, len(want)); got != want {
 		t.Fatal("large value corrupted")

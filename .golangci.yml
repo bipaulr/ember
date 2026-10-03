@@ -1,0 +1,36 @@
+# golangci-lint v2 configuration.
+# In v2 the old gosimple and stylecheck linters are part of staticcheck.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - bodyclose
+    - unconvert
+  settings:
+    errcheck:
+      # resp.Writer wraps a bufio.Writer, whose errors are sticky and are
+      # reported by Flush, so checking every Write would add no information.
+      exclude-functions:
+        - (*bufio.Writer).Write
+        - (*bufio.Writer).WriteByte
+        - (*bufio.Writer).WriteString
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+
+formatters:
+  enable:
+    - gofmt

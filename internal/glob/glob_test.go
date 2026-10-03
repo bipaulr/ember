@@ -37,5 +37,5 @@ func FuzzMatch(f *testing.F) {
 	f.Add("a*b", "aXb")
 	f.Add("[a-", "a")
 	f.Add(`\`, `\`)
-	f.Fuzz(func(t *testing.T, pat, s string) { Match(pat, s) })
+	f.Fuzz(func(t *testing.T, pat, s string) { _ = Match(pat, s) })
 }
