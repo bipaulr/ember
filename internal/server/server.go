@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"ember/internal/command"
+	"ember/internal/pubsub"
 	"ember/internal/resp"
 )
 
@@ -21,6 +22,11 @@ type Config struct {
 	Addr       string
 	MaxClients int
 	Logger     *slog.Logger
+	// SubQueueMessages and SubQueueBytes bound each pub/sub subscriber's
+	// outbound queue; a subscriber that exceeds either is disconnected.
+	// Zero selects the pubsub defaults.
+	SubQueueMessages int
+	SubQueueBytes    int64
 }
 
 // Server owns the listener and all live connections.
@@ -138,9 +144,14 @@ func (s *Server) Shutdown(ctx context.Context) error {
 // waiting for more input. Because bufio only calls Read when its buffer is
 // empty, every pipelined command already received is answered before this
 // point, and all of their replies leave in one write.
+//
+// It also owns the connection's write lock. The connection goroutine holds mu
+// while it executes commands and releases it only while blocked in Read, so the
+// pub/sub pump can write pushed messages exactly when no reply is half-written.
 type flushReader struct {
 	conn net.Conn
 	w    *resp.Writer
+	mu   *sync.Mutex
 }
 
 func (f *flushReader) Read(p []byte) (int, error) {
@@ -149,7 +160,35 @@ func (f *flushReader) Read(p []byte) (int, error) {
 			return 0, err
 		}
 	}
-	return f.conn.Read(p)
+	f.mu.Unlock()
+	n, err := f.conn.Read(p)
+	f.mu.Lock()
+	return n, err
+}
+
+// pumpWriteTimeout bounds how long a pushed message may block on a socket.
+const pumpWriteTimeout = 10 * time.Second
+
+// pump writes queued pub/sub messages to the socket. It is the only writer for
+// pushed data and runs until the subscriber is closed.
+func pump(conn net.Conn, mu *sync.Mutex, sub *pubsub.Subscriber) {
+	for {
+		select {
+		case <-sub.Done():
+			return
+		case msg := <-sub.C:
+			mu.Lock()
+			_ = conn.SetWriteDeadline(time.Now().Add(pumpWriteTimeout))
+			_, err := conn.Write(msg)
+			_ = conn.SetWriteDeadline(time.Time{})
+			mu.Unlock()
+			sub.Release(len(msg))
+			if err != nil {
+				_ = conn.Close()
+				return
+			}
+		}
+	}
 }
 
 // connWriter is the io.Writer behind a client's reply buffer. Before any bytes
@@ -177,10 +216,29 @@ func (cw *connWriter) Write(p []byte) (int, error) {
 func (s *Server) serveConn(conn net.Conn) {
 	cl := s.env.NewClient(conn.RemoteAddr().String())
 	w := resp.NewWriter(&connWriter{conn: conn, env: s.env, cl: cl})
-	r := resp.NewReader(&flushReader{conn: conn, w: w})
+	var wmu sync.Mutex
+	var pumps sync.WaitGroup
+	r := resp.NewReader(&flushReader{conn: conn, w: w, mu: &wmu})
 	c := &command.Ctx{W: w, Store: s.env.Store, Client: cl, Env: s.env}
+	cl.NewSub = func() *pubsub.Subscriber {
+		sub := pubsub.NewSubscriber(s.cfg.SubQueueMessages, s.cfg.SubQueueBytes, func() {
+			s.env.Hub.Overflows.Add(1)
+			s.log.Warn("disconnecting slow subscriber: queue full", "client", cl.Addr, "id", cl.ID)
+			_ = conn.Close()
+		})
+		pumps.Add(1)
+		go func() { defer pumps.Done(); pump(conn, &wmu, sub) }()
+		return sub
+	}
+	wmu.Lock() // held while running commands; see flushReader
 	defer func() {
 		_ = conn.Close()
+		wmu.Unlock()
+		if cl.Sub != nil {
+			s.env.Hub.RemoveAll(cl.Sub)
+			cl.Sub.Close()
+		}
+		pumps.Wait()
 		s.env.RemoveClient(cl)
 		s.mu.Lock()
 		delete(s.conns, conn)

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"ember/internal/glob"
 )
 
 func registerServer(t *Table) {
@@ -74,6 +76,10 @@ func writeInfoSection(sb *strings.Builder, c *Ctx, section string) {
 		line("expired_keys", env.Store.ExpiredKeys())
 		line("keyspace_hits", st.Hits)
 		line("keyspace_misses", st.Misses)
+		line("pubsub_channels", env.Hub.NumChannels())
+		line("pubsub_patterns", env.Hub.NumPat())
+		line("pubsub_messages_published", env.Hub.Published.Load())
+		line("pubsub_slow_subscribers_disconnected", env.Hub.Overflows.Load())
 	case "persistence":
 		sb.WriteString("# Persistence\r\n")
 		writePersistenceInfo(sb, env)
@@ -151,7 +157,7 @@ func cmdConfig(c *Ctx) {
 		var keys []string
 		for k := range vals {
 			for _, p := range c.Args[2:] {
-				if globMatch(strings.ToLower(string(p)), k) {
+				if glob.Match(strings.ToLower(string(p)), k) {
 					keys = append(keys, k)
 					break
 				}

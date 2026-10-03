@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"ember/internal/pubsub"
 	"ember/internal/resp"
 	"ember/internal/store"
 )
@@ -30,6 +31,12 @@ type Client struct {
 	// Dirty is set after a write command runs. The connection then commits the
 	// AOF before it sends the next bytes to the client.
 	Dirty bool
+
+	// Sub is this client's pub/sub inbox, created on its first subscription.
+	Sub *pubsub.Subscriber
+	// NewSub is supplied by the server. It creates the inbox and starts the
+	// goroutine that pushes queued messages to the socket.
+	NewSub func() *pubsub.Subscriber
 
 	// Per-client counters, summed by INFO. Keeping them per client avoids a
 	// contended atomic on every command.
@@ -78,6 +85,7 @@ func NewTable() *Table {
 	registerLists(t)
 	registerServer(t)
 	registerPersist(t)
+	registerPubSub(t)
 	return t
 }
 
@@ -125,6 +133,10 @@ func (t *Table) Execute(c *Ctx) {
 	n := len(c.Args)
 	if (spec.Arity > 0 && n != spec.Arity) || (spec.Arity < 0 && n < -spec.Arity) {
 		c.W.WriteError("ERR wrong number of arguments for '" + spec.Name + "' command")
+		return
+	}
+	if inSubMode(c.Client) && !subAllowed(spec.Name) {
+		c.W.WriteError(subErr(spec.Name))
 		return
 	}
 	spec.Handler(c)

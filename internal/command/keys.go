@@ -4,6 +4,7 @@ import (
 	"math"
 	"strconv"
 
+	"ember/internal/glob"
 	"ember/internal/store"
 )
 
@@ -180,7 +181,7 @@ func cmdKeys(c *Ctx) {
 	if pat == "*" {
 		keys = c.Store.Keys(func(string) bool { return true })
 	} else {
-		keys = c.Store.Keys(func(k string) bool { return globMatch(pat, k) })
+		keys = c.Store.Keys(func(k string) bool { return glob.Match(pat, k) })
 	}
 	c.W.WriteArrayHeader(len(keys))
 	for _, k := range keys {

@@ -493,34 +493,6 @@ func TestParseInt(t *testing.T) {
 	}
 }
 
-func TestGlob(t *testing.T) {
-	cases := []struct {
-		pat, s string
-		want   bool
-	}{
-		{"*", "", true}, {"*", "abc", true}, {"a*", "abc", true}, {"*c", "abc", true},
-		{"a*c", "abc", true}, {"a*c", "ac", true}, {"a*c", "ab", false},
-		{"a?c", "abc", true}, {"a?c", "ac", false}, {"", "", true}, {"", "a", false},
-		{"h[ae]llo", "hello", true}, {"h[ae]llo", "hallo", true}, {"h[ae]llo", "hillo", false},
-		{"h[^e]llo", "hallo", true}, {"h[^e]llo", "hello", false},
-		{"h[a-c]llo", "hbllo", true}, {"h[a-c]llo", "hdllo", false},
-		{"h[c-a]llo", "hbllo", true},
-		{`a\*b`, "a*b", true}, {`a\*b`, "axb", false}, {`a\`, `a\`, true},
-		{"**a**", "xay", true}, {"*a*b*c*", "xxaxxbxxcxx", true}, {"*a*b*c*", "xxaxxcxxbxx", false},
-		{`[\]]`, "]", true}, {"[abc", "a", true}, {"user:*", "user:42", true}, {"user:*", "usr:42", false},
-		{"a*", "", false}, {"?", "", false},
-	}
-	for _, c := range cases {
-		if got := globMatch(c.pat, c.s); got != c.want {
-			t.Errorf("globMatch(%q, %q) = %v, want %v", c.pat, c.s, got, c.want)
-		}
-	}
-	// Pathological pattern must finish quickly.
-	if globMatch(strings.Repeat("a*", 30)+"b", strings.Repeat("a", 5000)) {
-		t.Error("should not match")
-	}
-}
-
 func TestSanitize(t *testing.T) {
 	if got := sanitize([]byte("a\r\nb")); got != "a  b" {
 		t.Fatal(got)

@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"ember/internal/pubsub"
 	"ember/internal/store"
 )
 
@@ -18,6 +19,7 @@ type Env struct {
 	Port       int
 	MaxClients int
 	Table      *Table
+	Hub        *pubsub.Hub
 	// AOF is nil when persistence is disabled.
 	AOF Persister
 
@@ -33,7 +35,7 @@ type Env struct {
 
 // NewEnv creates the shared state around a store.
 func NewEnv(st *store.Store) *Env {
-	return &Env{Store: st, Start: time.Now(), Table: NewTable(), clients: make(map[int64]*Client)}
+	return &Env{Store: st, Start: time.Now(), Table: NewTable(), Hub: pubsub.NewHub(), clients: make(map[int64]*Client)}
 }
 
 // NewClient registers a new client for a connection from addr.

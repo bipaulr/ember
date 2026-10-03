@@ -1,9 +1,11 @@
-package command
+// Package glob implements Redis-style glob matching, shared by KEYS, CONFIG GET
+// and pattern subscriptions.
+package glob
 
-// globMatch reports whether s matches the Redis glob pattern: * ? [abc] [^a]
+// Match reports whether s matches the Redis glob pattern: * ? [abc] [^a]
 // [a-z] and backslash escapes. It runs in O(len(pattern)*len(s)) worst case and
 // never recurses, so hostile patterns cannot blow the stack.
-func globMatch(pattern, s string) bool {
+func Match(pattern, s string) bool {
 	p, i := 0, 0
 	starP, starI := -1, 0
 	for i < len(s) {

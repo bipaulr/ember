@@ -8,6 +8,18 @@ func registerConnection(t *Table) {
 }
 
 func cmdPing(c *Ctx) {
+	if inSubMode(c.Client) {
+		// RESP2 subscribed clients get [pong, payload] so the reply can be told
+		// apart from pushed messages.
+		c.W.WriteArrayHeader(2)
+		c.W.WriteBulkString("pong")
+		if len(c.Args) > 1 {
+			c.W.WriteBulk(c.Args[1])
+		} else {
+			c.W.WriteBulkString("")
+		}
+		return
+	}
 	switch len(c.Args) {
 	case 1:
 		c.W.WriteSimple("PONG")
