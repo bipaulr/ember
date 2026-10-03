@@ -1,0 +1,9 @@
+.git
+.github
+bin
+bench/results
+*.aof
+*.prof
+*.test
+*.exe
+docs
