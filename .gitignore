@@ -1,0 +1,14 @@
+# Build output
+/bin/
+*.exe
+*.test
+*.out
+*.prof
+
+# Runtime data
+*.aof
+*.tmp
+
+# Editor and tool files
+.vscode/
+.idea/
