@@ -40,7 +40,7 @@ func cmdQuit(c *Ctx) {
 func cmdSelect(c *Ctx) {
 	n, ok := parseInt(c.Args[1])
 	if !ok {
-		c.W.WriteError("ERR invalid DB index")
+		c.W.WriteError(errNotInt)
 		return
 	}
 	if n != 0 {

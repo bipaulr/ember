@@ -231,7 +231,7 @@ func incrByArg(c *Ctx, sign int64) {
 	}
 	if sign < 0 {
 		if d == math.MinInt64 {
-			c.W.WriteError(errOverflow)
+			c.W.WriteError("ERR decrement would overflow")
 			return
 		}
 		d = -d

@@ -88,7 +88,7 @@ func TestConnectionCommands(t *testing.T) {
 		{"ECHO", "-ERR wrong number of arguments for 'echo' command\r\n"},
 		{"SELECT 0", ok},
 		{"SELECT 1", "-ERR DB index is out of range\r\n"},
-		{"SELECT x", "-ERR invalid DB index\r\n"},
+		{"SELECT x", notInt},
 		{"QUIT", ok},
 	})
 }
@@ -165,7 +165,7 @@ func TestIncrDecr(t *testing.T) {
 		{"INCR big", "-ERR increment or decrement would overflow\r\n"},
 		{"SET small -9223372036854775808", ok},
 		{"DECR small", "-ERR increment or decrement would overflow\r\n"},
-		{"DECRBY n -9223372036854775808", "-ERR increment or decrement would overflow\r\n"},
+		{"DECRBY n -9223372036854775808", "-ERR decrement would overflow\r\n"},
 		{"LPUSH l a", integer(1)},
 		{"INCR l", wrong},
 		{"APPEND l x", wrong},
@@ -499,5 +499,26 @@ func TestSanitize(t *testing.T) {
 	}
 	if got := sanitize(bytes.Repeat([]byte("x"), 500)); len(got) != 128 {
 		t.Fatal(len(got))
+	}
+}
+
+func TestUnknownCommandListsArgumentsLikeRedis(t *testing.T) {
+	h := newHarness(t)
+	if got := h.do("FOO", "a", "b", "c", "d", "e"); got != "-ERR unknown command 'FOO', with args beginning with: 'a' 'b' 'c' 'd' 'e' \r\n" {
+		t.Fatalf("short args are all listed: %q", got)
+	}
+	long := strings.Repeat("x", 200)
+	got := h.do("FOO", long, "second", "third")
+	// The first argument is cut to 128 bytes, which already fills the budget.
+	want := "-ERR unknown command 'FOO', with args beginning with: '" + strings.Repeat("x", 128) + "' \r\n"
+	if got != want {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestDecrByMinimumOverflow(t *testing.T) {
+	h := newHarness(t)
+	if got := h.do("DECRBY", "n", "-9223372036854775808"); got != "-ERR decrement would overflow\r\n" {
+		t.Fatal(got)
 	}
 }

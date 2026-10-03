@@ -150,10 +150,17 @@ func unknownCommandMsg(args [][]byte) string {
 	sb.WriteString("ERR unknown command '")
 	sb.WriteString(sanitize(args[0]))
 	sb.WriteString("', with args beginning with: ")
-	for i := 1; i < len(args) && i <= 3; i++ {
-		sb.WriteByte('\'')
-		sb.WriteString(sanitize(args[i]))
-		sb.WriteString("' ")
+	// Redis appends arguments while fewer than 128 bytes have been written, and
+	// truncates each one to the room that is left.
+	listed := 0
+	for i := 1; i < len(args) && listed < 128; i++ {
+		a := args[i]
+		if room := 128 - listed; len(a) > room {
+			a = a[:room]
+		}
+		part := "'" + sanitize(a) + "' "
+		sb.WriteString(part)
+		listed += len(part)
 	}
 	return sb.String()
 }
