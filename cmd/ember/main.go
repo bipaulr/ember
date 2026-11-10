@@ -46,6 +46,10 @@ func run(ctx context.Context, args []string, logw io.Writer) error {
 		rewriteMin = fs.Int64("aof-rewrite-min-size", aof.DefaultRewriteMinSize, "automatic rewrite needs the AOF to be at least this many bytes (negative disables)")
 		verbose    = fs.Bool("verbose", false, "debug logging")
 		pprofAddr  = fs.String("pprof-addr", "", "serve net/http/pprof on this address, e.g. 127.0.0.1:6060 (off by default)")
+		nodeID     = fs.Int("node-id", 0, "this node's id in --cluster; 0 runs a single node with no replication")
+		members    = fs.String("cluster", "", "every cluster member as id=raft-host:port/client-host:port, comma separated")
+		electionT  = fs.Duration("election-timeout", 300*time.Millisecond, "cluster: shortest wait without a leader before starting an election")
+		heartbeatT = fs.Duration("heartbeat-interval", 50*time.Millisecond, "cluster: how often the leader contacts each follower")
 		health     = fs.Bool("healthcheck", false, "connect to the local server, send PING, exit 0 if it answers PONG (for container health checks)")
 	)
 	if err := fs.Parse(args); err != nil {
@@ -68,8 +72,26 @@ func run(ctx context.Context, args []string, logw io.Writer) error {
 		go servePprof(*pprofAddr, log)
 	}
 
-	st := store.New(*shards)
-	env := command.NewEnv(st)
+	var (
+		st        *store.Store
+		env       *command.Env
+		clustered *clusterNode
+	)
+	if *nodeID != 0 {
+		clustered, err = startCluster(clusterOptions{
+			nodeID: *nodeID, members: *members, electionTimeout: *electionT, heartbeatInterval: *heartbeatT,
+		}, *shards, log)
+		if err != nil {
+			return err
+		}
+		defer clustered.stop()
+		env, st = clustered.env, clustered.env.Store
+		// The replicated log takes the place of the append-only file.
+		*aofPath = ""
+	} else {
+		st = store.New(*shards)
+		env = command.NewEnv(st)
+	}
 
 	// Replay the AOF before the listener exists, so no client can observe a
 	// half-loaded keyspace.
@@ -108,6 +130,11 @@ func run(ctx context.Context, args []string, logw io.Writer) error {
 	case serveErr = <-errc:
 	case <-ctx.Done():
 		log.Info("shutting down")
+		if clustered != nil {
+			// Release clients blocked on a write, so Shutdown is not held up
+			// waiting for a commit that may never come.
+			clustered.bridge.Stop()
+		}
 		sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		serveErr = srv.Shutdown(sctx)
 		cancel()

@@ -20,12 +20,15 @@ type Network struct {
 	mu       sync.Mutex
 	handlers map[int]raft.RPCHandler
 	offline  map[int]bool
-	latency  time.Duration
+	// side is the partition a node is on. Nodes on different sides cannot
+	// talk. With no partition every node is on side 0.
+	side    map[int]int
+	latency time.Duration
 }
 
 // New creates an empty network.
 func New() *Network {
-	return &Network{handlers: make(map[int]raft.RPCHandler), offline: make(map[int]bool)}
+	return &Network{handlers: make(map[int]raft.RPCHandler), offline: make(map[int]bool), side: make(map[int]int)}
 }
 
 // Register makes h the receiver of messages addressed to id.
@@ -47,6 +50,27 @@ func (n *Network) Connect(id int) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	delete(n.offline, id)
+}
+
+// Partition splits the network: the nodes in each group can talk only to each
+// other, and all nodes not listed form one more group. It replaces any earlier
+// partition.
+func (n *Network) Partition(groups ...[]int) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	clear(n.side)
+	for i, group := range groups {
+		for _, id := range group {
+			n.side[id] = i + 1
+		}
+	}
+}
+
+// Heal removes the partition. Nodes cut off with Disconnect stay cut off.
+func (n *Network) Heal() {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	clear(n.side)
 }
 
 // SetLatency makes every message take d to arrive. A request and its reply are
@@ -80,11 +104,12 @@ func (n *Network) Endpoint(id int) raft.Transport {
 	return &endpoint{net: n, id: id}
 }
 
-// handlerFor returns the receiver for a message, or nil if either end is cut off.
+// handlerFor returns the receiver for a message, or nil if the two
+// nodes cannot currently talk.
 func (n *Network) handlerFor(from, to int) raft.RPCHandler {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	if n.offline[from] || n.offline[to] {
+	if n.offline[from] || n.offline[to] || n.side[from] != n.side[to] {
 		return nil
 	}
 	return n.handlers[to]

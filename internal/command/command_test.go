@@ -380,7 +380,7 @@ func TestServerCommands(t *testing.T) {
 	h.do("GET", "missing")
 
 	info := h.do("INFO")
-	for _, want := range []string{"# Server", "# Clients", "# Stats", "# Keyspace", "tcp_port:6380",
+	for _, want := range []string{"# Server", "# Clients", "# Stats", "# Keyspace", "cluster_enabled:0", "tcp_port:6380",
 		"connected_clients:1", "maxclients:100", "keyspace_hits:1", "keyspace_misses:1",
 		"total_commands_processed:", "db0:keys=1,expires=1", "aof_enabled:0"} {
 		if !strings.Contains(info, want) {

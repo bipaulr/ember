@@ -20,7 +20,7 @@ func registerServer(t *Table) {
 	t.add(Spec{Name: "hello", Arity: -1, Flags: []string{FlagFast}, Handler: cmdHello})
 }
 
-var infoSections = []string{"server", "clients", "stats", "persistence", "keyspace"}
+var infoSections = []string{"server", "clients", "stats", "persistence", "cluster", "keyspace"}
 
 func cmdInfo(c *Ctx) {
 	want := infoSections
@@ -83,6 +83,22 @@ func writeInfoSection(sb *strings.Builder, c *Ctx, section string) {
 	case "persistence":
 		sb.WriteString("# Persistence\r\n")
 		writePersistenceInfo(sb, env)
+	case "cluster":
+		sb.WriteString("# Cluster\r\n")
+		if env.Cluster == nil {
+			line("cluster_enabled", 0)
+			break
+		}
+		ci := env.Cluster.Info()
+		line("cluster_enabled", 1)
+		line("raft_node_id", ci.NodeID)
+		line("raft_role", ci.Role)
+		line("raft_term", ci.Term)
+		line("raft_leader_id", ci.LeaderID)
+		line("raft_leader_addr", ci.LeaderAddr)
+		line("raft_last_log_index", ci.LastLogIndex)
+		line("raft_commit_index", ci.CommitIndex)
+		line("raft_last_applied", ci.LastApplied)
 	case "keyspace":
 		sb.WriteString("# Keyspace\r\n")
 		if n := env.Store.Len(); n > 0 {

@@ -183,3 +183,59 @@ func TestPprofFlag(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 }
+
+func freeAddr(t *testing.T) string {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ln.Close() }()
+	return ln.Addr().String()
+}
+
+func TestClusterOfOneAcceptsWrites(t *testing.T) {
+	spec := "1=" + freeAddr(t) + "/" + freeAddr(t)
+	addr, cancel, done, out := startRun(t, "--node-id", "1", "--cluster", spec,
+		"--election-timeout", "60ms", "--heartbeat-interval", "20ms")
+
+	// Until the node has elected itself, writes are refused with CLUSTERDOWN.
+	deadline := time.Now().Add(5 * time.Second)
+	var got string
+	for time.Now().Before(deadline) {
+		if got = roundTrip(t, addr, "SET k v\r\n"); got == "+OK\r\n" {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if got != "+OK\r\n" {
+		t.Fatalf("SET = %q\n%s", got, out.String())
+	}
+	if got := roundTrip(t, addr, "INCR n\r\n"); got != ":1\r\n" {
+		t.Fatalf("INCR = %q", got)
+	}
+
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("shutdown: %v", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("server did not shut down")
+	}
+}
+
+func TestClusterFlagErrors(t *testing.T) {
+	a, b := freeAddr(t), freeAddr(t)
+	for name, args := range map[string][]string{
+		"node not in cluster": {"--node-id", "2", "--cluster", "1=" + a + "/" + b},
+		"malformed cluster":   {"--node-id", "1", "--cluster", "nonsense"},
+		"heartbeat too slow":  {"--node-id", "1", "--cluster", "1=" + a + "/" + b, "--election-timeout", "100ms", "--heartbeat-interval", "90ms"},
+	} {
+		var out safeBuf
+		if err := run(context.Background(), append([]string{"--host", "127.0.0.1", "--port", "0"}, args...), &out); err == nil {
+			t.Errorf("%s: run succeeded", name)
+		}
+	}
+}

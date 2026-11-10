@@ -22,6 +22,8 @@ type Env struct {
 	Hub        *pubsub.Hub
 	// AOF is nil when persistence is disabled.
 	AOF Persister
+	// Cluster is nil when the server runs as a single node.
+	Cluster ClusterNode
 
 	TotalConns atomic.Int64
 	Rejected   atomic.Int64
@@ -31,6 +33,30 @@ type Env struct {
 	// Counters folded in from clients that have disconnected.
 	doneCmds, doneHits, doneMisses int64
 	nextID                         atomic.Int64
+}
+
+// ClusterNode is what commands need from the replication layer.
+type ClusterNode interface {
+	// Propose replicates a write command to the cluster. It blocks until the
+	// command has been committed and executed locally, then returns the
+	// RESP-encoded reply. On failure the error text is a complete RESP error
+	// message, for example "MOVED 0 10.0.0.2:6380" when another node is the
+	// leader.
+	Propose(args [][]byte) (reply []byte, err error)
+	// Info describes this node's view of the cluster for INFO.
+	Info() ClusterInfo
+}
+
+// ClusterInfo is the cluster section of INFO.
+type ClusterInfo struct {
+	NodeID       int
+	Role         string // leader, follower or candidate
+	Term         uint64
+	LeaderID     int    // 0 if unknown
+	LeaderAddr   string // client address of the leader, empty if unknown
+	LastLogIndex uint64
+	CommitIndex  uint64
+	LastApplied  uint64
 }
 
 // NewEnv creates the shared state around a store.

@@ -139,3 +139,33 @@ func TestCallerCanGiveUpWhileMessageIsInFlight(t *testing.T) {
 		t.Fatal("the request arrived although the caller gave up first")
 	}
 }
+
+func TestPartitionSeparatesGroupsUntilHealed(t *testing.T) {
+	net := simnet.New()
+	for id := 1; id <= 5; id++ {
+		net.Register(id, &recorder{})
+	}
+	send := func(from, to int) error {
+		_, err := net.Endpoint(from).AppendEntries(context.Background(), to, &raft.AppendEntriesArgs{})
+		return err
+	}
+
+	net.Partition([]int{1, 2}) // 3, 4 and 5 form the other side
+	if err := send(1, 2); err != nil {
+		t.Fatalf("same side, listed group: %v", err)
+	}
+	if err := send(3, 5); err != nil {
+		t.Fatalf("same side, unlisted nodes: %v", err)
+	}
+	if err := send(1, 3); !errors.Is(err, simnet.ErrUnreachable) {
+		t.Fatalf("across the partition: err = %v", err)
+	}
+	if err := send(4, 2); !errors.Is(err, simnet.ErrUnreachable) {
+		t.Fatalf("across the partition, other direction: err = %v", err)
+	}
+
+	net.Heal()
+	if err := send(1, 3); err != nil {
+		t.Fatalf("after heal: %v", err)
+	}
+}

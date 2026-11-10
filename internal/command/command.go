@@ -52,6 +52,9 @@ type Ctx struct {
 	Store  *store.Store
 	Client *Client
 	Env    *Env
+	// Applying is set on the context that executes committed log entries in
+	// cluster mode. It makes write commands run instead of being proposed again.
+	Applying bool
 }
 
 // Handler executes a command and writes the reply to c.W.
@@ -137,6 +140,18 @@ func (t *Table) Execute(c *Ctx) {
 	}
 	if inSubMode(c.Client) && !subAllowed(spec.Name) {
 		c.W.WriteError(subErr(spec.Name))
+		return
+	}
+	if spec.write && c.Env.Cluster != nil && !c.Applying {
+		// Cluster mode: a write is not executed here. It goes into the
+		// replicated log, and the reply is whatever the handler produced when
+		// the committed entry was applied (see package cluster).
+		reply, err := c.Env.Cluster.Propose(c.Args)
+		if err != nil {
+			c.W.WriteError(err.Error())
+			return
+		}
+		c.W.WriteRaw(reply)
 		return
 	}
 	spec.Handler(c)

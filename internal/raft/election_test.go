@@ -23,6 +23,7 @@ type cluster struct {
 	t     *testing.T
 	net   *simnet.Network
 	nodes map[int]*raft.Node
+	sms   map[int]*recordingSM // what each node has applied
 
 	mu      sync.Mutex
 	offline map[int]bool // killed or disconnected: not expected to follow the majority
@@ -39,6 +40,7 @@ func newCluster(t *testing.T, size int) *cluster {
 		t:        t,
 		net:      simnet.New(),
 		nodes:    make(map[int]*raft.Node),
+		sms:      make(map[int]*recordingSM),
 		offline:  make(map[int]bool),
 		leaderOf: make(map[uint64]int),
 		stopMon:  make(chan struct{}),
@@ -51,10 +53,12 @@ func newCluster(t *testing.T, size int) *cluster {
 				peers = append(peers, p)
 			}
 		}
+		c.sms[id] = &recordingSM{}
 		n := raft.New(raft.Config{
 			ID:                id,
 			Peers:             peers,
 			Transport:         c.net.Endpoint(id),
+			StateMachine:      c.sms[id],
 			ElectionTimeout:   testElectionTimeout,
 			HeartbeatInterval: testHeartbeat,
 		})
@@ -104,6 +108,7 @@ func (c *cluster) shutdown() {
 	for _, n := range c.nodes {
 		n.Stop()
 	}
+	c.checkAppliedAgree()
 }
 
 // kill stops a node and cuts it off, like a crashed process.
