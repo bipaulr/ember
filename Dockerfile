@@ -4,7 +4,7 @@
 # Go 1.25 or newer matters inside containers: from 1.25 the runtime sizes GOMAXPROCS
 # from the container's CPU quota. Go 1.24 used the host's core count, so a
 # 2-CPU container ran 16 threads and was throttled (p99 of 67 ms in my benchmark).
-FROM golang:1.25-alpine@sha256:1ae0735f00daffa3aaf1363a5184c0d2dc55c78e3db4ec70241cdac97bf84b59 AS build
+FROM golang:1.27-alpine@sha256:70bd7ddea8b6cbe5d6943cde279d6b67feb10cc924fb9100d1d8757c1575b280 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
