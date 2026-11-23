@@ -356,6 +356,11 @@ func (a *AOF) StartRewrite() error {
 		defer a.wg.Done()
 		start := time.Now()
 		err := a.rewrite()
+		// Remove a leftover temp file while this rewrite still owns it. Once
+		// rewriting is false a new rewrite may create the same path, and a late
+		// Remove would delete its file (Linux allows unlinking an open file),
+		// making its rename fail.
+		_ = os.Remove(tempPath(a.opts.Path))
 		a.mu.Lock()
 		a.rewriting = false
 		a.rbuf = nil
@@ -365,7 +370,6 @@ func (a *AOF) StartRewrite() error {
 		}
 		size := a.size
 		a.mu.Unlock()
-		_ = os.Remove(tempPath(a.opts.Path))
 		if err != nil {
 			a.log.Warn("aof rewrite failed", "err", err)
 		} else {
