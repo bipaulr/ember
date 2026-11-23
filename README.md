@@ -1,13 +1,10 @@
 # Ember
 
-[![CI](https://github.com/OWNER/ember/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/ember/actions/workflows/ci.yml)
+[![CI](https://github.com/bipaulr/ember/actions/workflows/ci.yml/badge.svg)](https://github.com/bipaulr/ember/actions/workflows/ci.yml)
 
 A Redis-compatible in-memory key-value server written in Go with only the
 standard library. The real `redis-cli`, `redis-benchmark` and `go-redis` talk to
 it unchanged.
-
-> The CI badge points at `OWNER/ember`. Replace `OWNER` with your GitHub user
-> name after you create the repository.
 
 ## Architecture
 
