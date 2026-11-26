@@ -4,7 +4,9 @@
 
 A Redis-compatible in-memory key-value server written in Go with only the
 standard library. The real `redis-cli`, `redis-benchmark` and `go-redis` talk to
-it unchanged.
+it unchanged. It runs as a single node with an append-only file, or as a
+replicated cluster where every write goes through a Raft log
+([cluster mode](#cluster-mode-raft)).
 
 ## Architecture
 
@@ -68,6 +70,10 @@ image); pass `--aof-path ""` to run without persistence.
 | `--shards` | `256` | keyspace shards |
 | `--max-clients` | `10000` | connection limit |
 | `--aof-rewrite-min-size` | `67108864` | automatic rewrite threshold in bytes (negative disables) |
+| `--node-id` | `0` | this node's id in `--cluster`; `0` runs a single node |
+| `--cluster` | | every member as `id=raft-host:port/client-host:port`, comma separated |
+| `--election-timeout` | `300ms` | cluster: shortest wait without a leader before an election |
+| `--heartbeat-interval` | `50ms` | cluster: how often the leader contacts each follower |
 | `--pprof-addr` | off | serve `net/http/pprof`, e.g. `127.0.0.1:6060` |
 | `--healthcheck` | | connect to the local server, `PING`, exit 0 on `PONG` (used by the Docker `HEALTHCHECK`) |
 | `--verbose` | off | debug logging |
@@ -80,6 +86,41 @@ throughput loss and a 67 ms p99 in my benchmarks (see docs/BENCHMARKS.md).
 Ctrl+C or SIGTERM triggers a graceful shutdown: stop accepting, let running
 commands finish, flush and fsync the AOF, exit.
 
+## Cluster mode (Raft)
+
+Start every node with the same `--cluster` list and its own `--node-id`. Three
+nodes on one machine:
+
+```bash
+CLUSTER=1=127.0.0.1:7001/127.0.0.1:6381,2=127.0.0.1:7002/127.0.0.1:6382,3=127.0.0.1:7003/127.0.0.1:6383
+go run ./cmd/ember --node-id 1 --port 6381 --cluster $CLUSTER
+go run ./cmd/ember --node-id 2 --port 6382 --cluster $CLUSTER
+go run ./cmd/ember --node-id 3 --port 6383 --cluster $CLUSTER
+```
+
+How it behaves:
+
+* The nodes elect a leader with Raft (randomized election timeouts, heartbeats).
+  Nodes talk to each other over TCP with the standard library's `net/rpc`.
+* A write command is not run directly. The leader appends it to the Raft log,
+  replicates it, and replies only after a majority of nodes has the entry and it
+  has been applied. Every node applies the same commands in the same order.
+* A write sent to a follower gets `-MOVED 0 <leader-host:port>`, so
+  `redis-cli -c` follows it to the leader. With no known leader the reply is
+  `-CLUSTERDOWN`, and the client should retry.
+* The leader puts its clock reading into each entry and expiry runs on that log
+  clock, so TTLs expire at the same point on every node.
+* Reads are answered by whichever node receives them, so a follower can return
+  a value that is slightly behind the leader.
+* `INFO cluster` shows this node's role, term, leader, and log and commit
+  indexes.
+
+Limits: the Raft log and term are kept in memory only, and the AOF is turned off
+in cluster mode, so the data survives losing a minority of nodes but not
+restarting the whole cluster. There are no log snapshots or membership changes
+(the member list is fixed at startup), and `PUBLISH` reaches subscribers on the
+receiving node only.
+
 ## Supported commands
 
 | Group | Commands |
@@ -89,7 +130,7 @@ commands finish, flush and fsync the AOF, exit.
 | Keys | `DEL` `EXISTS` `EXPIRE` `PEXPIRE` `EXPIREAT` `PEXPIREAT` (with `NX` `XX` `GT` `LT`) `TTL` `PTTL` `PERSIST` `TYPE` `KEYS` (glob) `DBSIZE` `FLUSHALL` `FLUSHDB` |
 | Lists | `LPUSH` `RPUSH` `LPOP` `RPOP` (optional count) `LLEN` `LRANGE` |
 | Pub/sub | `SUBSCRIBE` `UNSUBSCRIBE` `PSUBSCRIBE` `PUNSUBSCRIBE` `PUBLISH` `PUBSUB` (`CHANNELS` `NUMSUB` `NUMPAT`) |
-| Server | `INFO` (`server` `clients` `stats` `persistence` `keyspace`) `COMMAND` (`COUNT` `DOCS` `INFO` `LIST`) `CONFIG GET` `BGREWRITEAOF` |
+| Server | `INFO` (`server` `clients` `stats` `persistence` `cluster` `keyspace`) `COMMAND` (`COUNT` `DOCS` `INFO` `LIST`) `CONFIG GET` `BGREWRITEAOF` |
 
 Error replies use Redis's wording, for example
 `-WRONGTYPE Operation against a key holding the wrong kind of value`,
@@ -98,7 +139,8 @@ Error replies use Redis's wording, for example
 
 ## Not supported
 
-Replication, clustering, RESP3 (`HELLO 3` is refused with `NOPROTO`),
+Redis Cluster (hash slots and the `CLUSTER` commands), Redis-style primary/replica
+replication (`REPLICAOF`), RESP3 (`HELLO 3` is refused with `NOPROTO`),
 transactions (`MULTI`/`EXEC`), Lua scripting, RDB snapshots, eviction policies
 and `maxmemory`, hashes, sets, sorted sets, streams, ACLs and TLS. Only database
 0 exists. Multi-key commands (`MSET`, `DEL a b`) are not atomic across keys.
@@ -166,6 +208,10 @@ internal/aof/        append-only file: write, replay, rewrite
 internal/pubsub/     channels, patterns, bounded subscriber queues
 internal/glob/       Redis-style glob matching
 internal/server/     TCP listener and connection handling
+internal/raft/       Raft: leader election, log replication, commit and apply
+internal/raft/simnet/     simulated network for Raft tests (disconnects, latency, partitions)
+internal/raft/transport/  net/rpc transport between nodes
+internal/cluster/    joins Raft to the command layer: proposes writes, applies entries, MOVED
 test/integration/    end-to-end tests with go-redis and the built binary
 bench/               benchmark scripts, docker-compose, results
 scripts/ci.ps1       local mirror of the CI workflow
